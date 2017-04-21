@@ -16,7 +16,7 @@ from collections import defaultdict
 import pandas as pd
 
 
-def find_outliers(vcflist, svtype):
+def find_outliers(vcflist, svtypes):
     """
     Locate samples which have abnormally high count of a specific variant type.
 
@@ -40,39 +40,38 @@ def find_outliers(vcflist, svtype):
     for f in vcflist:
         vcf = VariantFile(f)
         for record in vcf:
-            if record.info['SVTYPE'] != svtype:
+            svtype = record.info['SVTYPE']
+            if svtype not in svtypes:
                 continue
+
             for sample in record.samples:
                 gt = record.samples[sample]['GT']
                 if gt not in null_GTs:
-                    counts[sample] += 1
+                    counts[(sample, svtype)] += 1
 
     counts = pd.DataFrame.from_dict({'var_count': counts})
+    columns = {'level_0': 'sample', 'level_1': 'svtype'}
+    counts = counts.reset_index().rename(columns=columns)
 
-    # Write empty list if no calls of SVTYPE present
-    if counts.shape[0] == 0:
-        return []
-
-    # Identify outliers
-    Q1 = counts.var_count.quantile(0.25)
-    Q3 = counts.var_count.quantile(0.75)
+    # Calculate outlier cutoff
+    Q1 = counts.groupby('svtype').var_count.quantile(0.25)
+    Q3 = counts.groupby('svtype').var_count.quantile(0.75)
     IQR = Q3 - Q1
     cutoff = Q3 + 1.5 * IQR
-    outliers = counts.loc[counts.var_count > cutoff]
 
-    return list(outliers.index)
+    # Identify outliers
+    cutoff = cutoff.rename('cutoff').reset_index()
+    outliers = pd.merge(counts, cutoff, on='svtype', how='left')
+    outliers = outliers.loc[outliers.var_count > outliers.cutoff]
+
+    return outliers
 
 
 def main():
     vcflist = snakemake.input
-    svtype = snakemake.wildcards.svtype
-    source = snakemake.wildcards.source
 
-    outliers = find_outliers(vcflist, svtype)
-
-    with open(snakemake.output[0], 'w') as fout:
-        for sample in outliers:
-            fout.write(sample + '\n')
+    outliers = find_outliers(vcflist, snakemake.params.svtypes)
+    outliers.to_csv(snakemake.output[0], index=False, sep='\t')
 
 
 if __name__ == '__main__':
