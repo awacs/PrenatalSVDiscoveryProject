@@ -12,8 +12,10 @@ wildcard_constraints:
 
 rule all:
     input:
-        expand('data/outliers/{source}.{svtype}.list', 
-               source=SOURCES, svtype=SVTYPES)
+        expand('data/filtered_vcfs/{source}.{quad}.vcf',
+               source=SOURCES, quad=QUADS)
+#         expand('data/outliers/{source}.list', 
+#                source=SOURCES)
 #        expand('std_vcfs/{source}.{quad}.vcf', 
 #               source=SOURCES, quad=QUADS)
 
@@ -31,7 +33,18 @@ rule identify_vcf_outliers:
     input:
         expand('data/std_vcfs/{{source}}.{quad}.vcf', quad=QUADS)
     output:
-        'data/outliers/{source}.{svtype}.list'
+        'data/outliers/{source}.list'
+    params:
+        svtypes=SVTYPES
     script:
         "scripts/find_outliers.py"
+
+rule remove_vcf_outliers:
+    input:
+        vcf='data/std_vcfs/{source}.{quad}.vcf',
+        outliers='data/outliers/{source}.list'
+    output:
+        'data/filtered_vcfs/{source}.{quad}.vcf'
+    script:
+        "scripts/remove_outliers.py"
 
