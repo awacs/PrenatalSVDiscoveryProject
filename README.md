@@ -1,20 +1,10 @@
 # SV detection pipeline
 
-Directory structure, to be adjusted as necessary
+The pipeline consists of a series of modular workflows. Workflow summaries are
+provided above; more detail is available in their respective READMEs.
 
-* `data/`  
-    Data - only config files are version controlled
-    * `config/`  
-        Config files 
-    * `raw_vcfs/`  
-        Raw VCFs
-    * `std_vcfs/`  
-        Standardized VCFs
+* `preprocessing/`  
+    Data standardization and outlier removal.
 * `logs/`  
-    LSF logs
-* `scratch/`  
-    Intermediate files
+    LSF logs.
 * `scripts/`  
-    Scripts invoked by workflows
-* `workflows/`  
-    Snakefiles
