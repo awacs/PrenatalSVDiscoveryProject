@@ -1,8 +1,8 @@
 
-configfile: 'config/config.yaml'
+configfile: 'config.yaml'
 
 SOURCES = config['pesr_sources']
-SVTYPES = 'DEL DUP INV BND'.split()
+SVTYPES = config['svtypes']
 
 with open(config['quads']) as qlist:
     QUADS = [q.strip() for q in qlist.readlines()]
@@ -12,18 +12,16 @@ wildcard_constraints:
 
 rule all:
     input:
-        expand('data/filtered_vcfs/{source}.{quad}.vcf',
+        expand('filtered_vcfs/{source}.{quad}.vcf',
                source=SOURCES, quad=QUADS)
-#         expand('data/outliers/{source}.list', 
-#                source=SOURCES)
-#        expand('std_vcfs/{source}.{quad}.vcf', 
-#               source=SOURCES, quad=QUADS)
+    output:
+        touch('all.done')
 
 rule standardize_vcf:
     input:
-        'data/raw_vcfs/{source}/{source}.{quad}.vcf.gz'
+        'raw_vcfs/{source}/{source}.{quad}.vcf.gz'
     output:
-        'data/std_vcfs/{source}.{quad}.vcf'
+        'std_vcfs/{source}.{quad}.vcf'
     shell:
         """
         standardize-vcf {input} {output} {wildcards.source}
@@ -31,9 +29,9 @@ rule standardize_vcf:
 
 rule identify_vcf_outliers:
     input:
-        expand('data/std_vcfs/{{source}}.{quad}.vcf', quad=QUADS)
+        expand('std_vcfs/{{source}}.{quad}.vcf', quad=QUADS)
     output:
-        'data/outliers/{source}.list'
+        'outliers/{source}.list'
     params:
         svtypes=SVTYPES
     script:
@@ -41,10 +39,10 @@ rule identify_vcf_outliers:
 
 rule remove_vcf_outliers:
     input:
-        vcf='data/std_vcfs/{source}.{quad}.vcf',
-        outliers='data/outliers/{source}.list'
+        vcf='std_vcfs/{source}.{quad}.vcf',
+        outliers='outliers/{source}.list'
     output:
-        'data/filtered_vcfs/{source}.{quad}.vcf'
+        'filtered_vcfs/{source}.{quad}.vcf'
     script:
         "scripts/remove_outliers.py"
 

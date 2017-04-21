@@ -1,7 +1,0 @@
-quads: config/quads.test.list
-samples: config/samples.2076.list
-pesr_sources:
-    - delly
-    - lumpy
-    - manta
-    - wham
