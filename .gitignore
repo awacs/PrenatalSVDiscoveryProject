@@ -4,4 +4,13 @@ scratch/
 .*.swp
 .snakemake*
 
-!data/config/
+# Don't track module data
+preprocessing/*
+
+# Do track each module's scripts, Snakefiles, configurations, and READMEs
+!*/scripts/
+!*/Snakefile
+!*/config.yaml
+!*/cluster.yaml
+!*/README.md
+
