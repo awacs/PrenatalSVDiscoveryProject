@@ -1,0 +1,11 @@
+quads: '../ref/quads.test.list'
+pesr_sources:
+    - delly
+    - lumpy
+    - manta
+    - wham
+svtypes:
+    - DEL
+    - DUP
+    - INV
+    - BND
