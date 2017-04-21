@@ -2,10 +2,14 @@
 
 Directory structure, to be adjusted as necessary
 
-* config/  
-    Config files 
 * data/  
-    Data
+    Data - only config files are version controlled
+    * config/  
+        Config files 
+    * raw_vcfs/
+        Raw VCFs
+    * std_vcfs/
+        Standardized VCFs
 * logs/  
     LSF logs
 * scratch/  
