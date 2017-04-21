@@ -1,0 +1,26 @@
+
+workdir: 'data/'
+configfile: 'config/config.yaml'
+
+SOURCES = config['pesr_sources']
+
+with open(config['quads']) as qlist:
+    QUADS = [q.strip() for q in qlist.readlines()]
+
+wildcard_constraints:
+    source='(' + '|'.join(SOURCES) + ')'
+
+rule all:
+    input:
+        expand('std_vcfs/{source}.{quad}.vcf', 
+               source=SOURCES, quad=QUADS)
+
+rule standardize_vcf:
+    input:
+        'raw_vcfs/{source}/{source}.{quad}.vcf.gz'
+    output:
+        'std_vcfs/{source}.{quad}.vcf'
+    shell:
+        """
+        standardize-vcf {input} {output} {wildcards.source}
+        """
