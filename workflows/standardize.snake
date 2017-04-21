@@ -1,8 +1,8 @@
 
-workdir: 'data/'
 configfile: 'config/config.yaml'
 
 SOURCES = config['pesr_sources']
+SVTYPES = 'DEL DUP INV BND'.split()
 
 with open(config['quads']) as qlist:
     QUADS = [q.strip() for q in qlist.readlines()]
@@ -12,15 +12,26 @@ wildcard_constraints:
 
 rule all:
     input:
-        expand('std_vcfs/{source}.{quad}.vcf', 
-               source=SOURCES, quad=QUADS)
+        expand('data/outliers/{source}.{svtype}.list', 
+               source=SOURCES, svtype=SVTYPES)
+#        expand('std_vcfs/{source}.{quad}.vcf', 
+#               source=SOURCES, quad=QUADS)
 
 rule standardize_vcf:
     input:
-        'raw_vcfs/{source}/{source}.{quad}.vcf.gz'
+        'data/raw_vcfs/{source}/{source}.{quad}.vcf.gz'
     output:
-        'std_vcfs/{source}.{quad}.vcf'
+        'data/std_vcfs/{source}.{quad}.vcf'
     shell:
         """
         standardize-vcf {input} {output} {wildcards.source}
         """
+
+rule identify_vcf_outliers:
+    input:
+        expand('data/std_vcfs/{{source}}.{quad}.vcf', quad=QUADS)
+    output:
+        'data/outliers/{source}.{svtype}.list'
+    script:
+        "scripts/find_outliers.py"
+
