@@ -1,3 +1,6 @@
-data/
+data/*
 logs/
 scratch/
+.*.swp
+
+!data/config/
