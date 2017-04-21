@@ -2,19 +2,19 @@
 
 Directory structure, to be adjusted as necessary
 
-* data/  
+* `data/`  
     Data - only config files are version controlled
-    * config/  
+    * `config/`  
         Config files 
-    * raw_vcfs/  
+    * `raw_vcfs/`  
         Raw VCFs
-    * std_vcfs/  
+    * `std_vcfs/`  
         Standardized VCFs
-* logs/  
+* `logs/`  
     LSF logs
-* scratch/  
+* `scratch/`  
     Intermediate files
-* scripts/  
+* `scripts/`  
     Scripts invoked by workflows
-* workflows/  
+* `workflows/`  
     Snakefiles
