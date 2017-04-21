@@ -6,9 +6,9 @@ Directory structure, to be adjusted as necessary
     Data - only config files are version controlled
     * config/  
         Config files 
-    * raw_vcfs/
+    * raw_vcfs/  
         Raw VCFs
-    * std_vcfs/
+    * std_vcfs/  
         Standardized VCFs
 * logs/  
     LSF logs
