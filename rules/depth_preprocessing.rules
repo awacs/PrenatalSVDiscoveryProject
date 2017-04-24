@@ -17,18 +17,21 @@ SOURCES = config['depth_sources']
 
 
 rule standardize_cnmops:
+    """Use X/Y calls from sex split"""
     input:
-        'data/raw_beds/cnmops/SFARI.519.cohort.bed.gz'
+        autosomal='data/raw_beds/cnmops/SFARI.519.cohort.bed.gz',
+        allosomal='data/raw_beds/cnmops_XY/{sample}/{sample}.allosomes.cnMOPS.merged.{svtype}.bed'
     output:
         'preprocessing/std_beds/cnmops/{sample}.{svtype}.raw.bed'
     params:
         ssc=lambda wildcards: ID_MAP[wildcards.sample]
     shell:
         """
-        zcat {input} \
+        zcat {input.autosomal} \
             | fgrep {wildcards.sample} \
             | fgrep {wildcards.svtype} \
-            | awk -v OFS="\\t" '{{print $1, $2, $3, $3-$2, "1", "0", "0"}}' \
+            | awk -v OFS="\\t" '($1!="X" && $1!="Y") {{print $1, $2, $3, $3-$2, "1", "0", "0"}}' \
+            | cat - <(sed -e '/^#/d' {input.allosomal} | awk -v OFS="\\t" '{{print $1, $2, $3, $3-$2, 1, 0, 0}}') \
             > {output};
         """
 
