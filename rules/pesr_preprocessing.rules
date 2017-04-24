@@ -1,5 +1,4 @@
 
-configfile: 'config.yaml'
 
 SOURCES = config['pesr_sources']
 SVTYPES = config['svtypes']
@@ -10,18 +9,11 @@ with open(config['quads']) as qlist:
 wildcard_constraints:
     source='(' + '|'.join(SOURCES) + ')'
 
-rule all:
-    input:
-        expand('filtered_vcfs/{source}.{quad}.vcf',
-               source=SOURCES, quad=QUADS)
-    output:
-        touch('all.done')
-
 rule standardize_vcf:
     input:
-        'raw_vcfs/{source}/{source}.{quad}.vcf.gz'
+        'data/raw_vcfs/{source}/{source}.{quad}.vcf.gz'
     output:
-        'std_vcfs/{source}.{quad}.vcf'
+        'preprocessing/std_vcfs/{source}.{quad}.vcf'
     shell:
         """
         standardize-vcf {input} {output} {wildcards.source}
@@ -29,9 +21,9 @@ rule standardize_vcf:
 
 rule identify_vcf_outliers:
     input:
-        expand('std_vcfs/{{source}}.{quad}.vcf', quad=QUADS)
+        expand('preprocessing/std_vcfs/{{source}}.{quad}.vcf', quad=QUADS)
     output:
-        'outliers/{source}.list'
+        'preprocessing/outliers/{source}.list'
     params:
         svtypes=SVTYPES
     script:
@@ -39,10 +31,10 @@ rule identify_vcf_outliers:
 
 rule remove_vcf_outliers:
     input:
-        vcf='std_vcfs/{source}.{quad}.vcf',
-        outliers='outliers/{source}.list'
+        vcf='preprocessing/std_vcfs/{source}.{quad}.vcf',
+        outliers='preprocessing/outliers/{source}.list'
     output:
-        'filtered_vcfs/{source}.{quad}.vcf'
+        'preprocessing/filtered_vcfs/{source}.{quad}.vcf'
     script:
         "scripts/remove_outliers.py"
 

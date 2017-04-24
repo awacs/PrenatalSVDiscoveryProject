@@ -9,10 +9,11 @@ with open(config['quads']) as qlist:
 wildcard_constraints:
     source='(' + '|'.join(SOURCES) + ')'
 
-subworkflow preprocessing:
-    workdir: "preprocessing"
+include:
+    'rules/pesr_preprocessing.rules'
 
 rule all:
     input:
-        preprocessing('all.done')
+        expand('preprocessing/filtered_vcfs/{source}.{quad}.vcf',
+               source=SOURCES, quad=QUADS)
 
