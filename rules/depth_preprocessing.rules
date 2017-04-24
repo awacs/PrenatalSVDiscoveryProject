@@ -12,7 +12,7 @@ with open(config['samples']) as slist:
     SAMPLES = [s.strip() for s in slist.readlines()]
 
 # Filter ID map to samples of interest
-ID_MAP = {k: v for k, v in ID_MAP if k in SAMPLES}
+ID_MAP = {k: v for k, v in ID_MAP.items() if k in SAMPLES}
 SOURCES = config['depth_sources']
 
 STAT_SOURCES = 'cnmops cnvnator genomestrip merged'.split()
@@ -20,20 +20,19 @@ STAT_SOURCES = 'cnmops cnvnator genomestrip merged'.split()
 SVTYPES = 'del dup'.split()
 DISTS = [0, 100, 200, 500]
 
-localrules: all, merge_stats
-
-rule all:
-    input:
-        expand('{source}/{svtype}/{dist}/{sample}.merged.bed',
-               source=STAT_SOURCES, svtype=SVTYPES, dist=DISTS, sample=SAMPLES)
+# rule all:
+#     input:
+#         merged='preprocessing/std_beds/{source}/{sample}.{svtype}.merged.bed' 
+#         expand('{source}/{svtype}/{dist}/{sample}.merged.bed',
+#                source=STAT_SOURCES, svtype=SVTYPES, dist=DISTS, sample=SAMPLES)
 #        expand('merged_cov.{cat}.{svtype}.{dist}.bed.gz',
 #               svtype=SVTYPES, cat='merged check'.split(), dist=DISTS)
 
-rule raw_cnmops:
+rule standardize_cnmops:
     input:
-        'original_calls/cnmops/SFARI.519.cohort.bed.gz'
+        'data/raw_beds/cnmops/SFARI.519.cohort.bed.gz'
     output:
-        'cnmops/{svtype}/raw/{sample}.raw.bed',
+        'preprocessing/std_beds/cnmops/{sample}.{svtype}.raw.bed'
     params:
         ssc=lambda wildcards: ID_MAP[wildcards.sample]
     shell:
@@ -46,38 +45,38 @@ rule raw_cnmops:
         """
 
 def raw_cnvnator_bed(wildcards):
-    path = 'original_calls/cnvnator/{0}.{1}.win100.bp200.sort.bedpe'
+    path = 'data/raw_beds/cnvnator/{0}.{1}.win100.bp200.sort.bedpe'
     return path.format(ID_MAP[wildcards.sample], wildcards.svtype)
 
-rule raw_cnvnator:
+rule standardize_cnvnator:
     input:
         raw_cnvnator_bed
     output:
-        'cnvnator/{svtype}/raw/{sample}.raw.bed',
+        'preprocessing/std_beds/cnvnator/{sample}.{svtype}.raw.bed'
     shell:
         """
         awk -v OFS="\\t" '{{print $1, $2+50, $5+50, $8, "0", "1", "0"}}' {input} > {output};
         """
 
 def raw_genomestrip_bed(wildcards):
-    path = 'original_calls/genomestrip/{0}.genomestrip.{1}.bed'
+    path = 'data/raw_beds/genomestrip/{0}.genomestrip.{1}.bed'
     return path.format(ID_MAP[wildcards.sample], wildcards.svtype)
 
-rule raw_genomestrip:
+rule standardize_genomestrip:
     input:
         raw_genomestrip_bed
     output:
-        'genomestrip/{svtype}/raw/{sample}.raw.bed'
+        'preprocessing/std_beds/genomestrip/{sample}.{svtype}.raw.bed'
     shell:
         """
         awk -v OFS="\\t" '{{print $1, $2, $3, $4-$3, "0", "0", "1"}}' {input} > {output}
         """
 
-rule raw_merged:
+rule cat_standard:
     input:
-        expand('{source}/{{svtype}}/raw/{{sample}}.raw.bed', source=SOURCES)
+        expand('preprocessing/std_beds/{source}/{{sample}}.{{svtype}}.raw.bed', source=SOURCES)
     output:
-        'merged/{svtype}/raw/{sample}.raw.bed'
+        'preprocessing/std_beds/merged_algs/{sample}.{svtype}.raw.bed'
     shell:
         """
         cat {input} | sort -k1,1V -k2,2n > {output}
@@ -85,12 +84,16 @@ rule raw_merged:
 
 rule merge:
     input:
-        '{source}/{svtype}/raw/{sample}.raw.bed'
+        'preprocessing/std_beds/{source}/{sample}.{svtype}.raw.bed'
     output:
-        merged='{source}/{svtype}/{dist}/{sample}.merged.bed'
+        merged='preprocessing/std_beds/{source}/{sample}.{svtype}.merged.bed' 
+    params:
+        dist=0
+    wildcard_constraints:
+        source='(' + '|'.join(SOURCES) + '|merged_algs)'
     shell:
         """
-        bedtools merge -i {input} -d {wildcards.dist} -c 4,5,6 -o sum \
+        bedtools merge -i {input} -d {params.dist} -c 4,5,6 -o sum \
             | bedtools coverage -a stdin -b {input} \
             | awk -v OFS="\\t" '{{print $1, $2, $3, $3-$2, $4, $5, $6, $10}}' \
             > {output.merged};

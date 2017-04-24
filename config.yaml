@@ -1,12 +1,23 @@
 quads: ref/quads.test.list
 samples: ref/samples.test.list
+idmap: ref/519families_idmapping
+
 pesr_sources:
     - delly
     - lumpy
     - manta
     - wham
+depth_sources:
+    - cnmops
+    - cnvnator
+    - genomestrip
+
 svtypes:
     - DEL
     - DUP
     - INV
     - BND
+
+cnv_types:
+    - del
+    - dup
