@@ -5,9 +5,6 @@ outlying samples. Outliers are determined to be samples with more than
 `(Q3 + 1.5 * IQR)` variants observed, and are calculated on a per-algorithm,
 per-svtype basis (e.g. Delly inversions).
 
-* `raw_vcfs/{source}/{source}.quad.vcf`  
-    Raw VCFs.  
-
 * `std_vcfs/{source}.{quad}.vcf`  
     Standardized VCFs.  
         - INFO fields for CHR2, END, STRANDS, SVTYPE, SVLEN, and SOURCE    
