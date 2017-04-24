@@ -28,7 +28,7 @@ per-svtype basis (e.g. Delly inversions).
         Raw beds subjected to bedtools merged.
     * `merged_algs/{sample}.{svtype}.raw.bed`  
         Sorted concatenation of raw calls.
-    * `merged_algs/{sample}.{svtype}.merged.bed`
+    * `merged_algs/{sample}.{svtype}.merged.bed`  
         Per-sample merging of raw calls across all algorithms.
     * `merged_algs/{sample}.{svtype}.cov.bed`  
         Final per-sample standardized bed. Each merged call is queried for
