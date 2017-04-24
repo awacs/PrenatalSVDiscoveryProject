@@ -1,5 +1,5 @@
 quads: ref/quads.test.list
-samples: ref/samples.2076.list
+samples: ref/samples.test.list
 pesr_sources:
     - delly
     - lumpy
