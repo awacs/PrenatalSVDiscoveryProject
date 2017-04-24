@@ -4,15 +4,17 @@ Matthew Stone <mstone5@mgh.harvard.edu>
 
 """
 
-idmap = '/data/talkowski/Samples/SFARI/lists/519families_idmapping'
-with open(idmap) as idmapf:
+with open(config['idmap']) as idmapf:
     idkeys = [line.strip().split() for line in idmapf]
-    SSC = dict(idkeys)
-    SAMPLES = list(SSC.keys())
+    ID_MAP = dict(idkeys)
 
-#SAMPLES = ['11194.p1']
-#SSC = {'11194.p1': 'SSC00668'}
-SOURCES = 'cnmops cnvnator genomestrip'.split()
+with open(config['samples']) as slist:
+    SAMPLES = [s.strip() for s in slist.readlines()]
+
+# Filter ID map to samples of interest
+ID_MAP = {k: v for k, v in ID_MAP if k in SAMPLES}
+SOURCES = config['depth_sources']
+
 STAT_SOURCES = 'cnmops cnvnator genomestrip merged'.split()
 
 SVTYPES = 'del dup'.split()
@@ -33,7 +35,7 @@ rule raw_cnmops:
     output:
         'cnmops/{svtype}/raw/{sample}.raw.bed',
     params:
-        ssc=lambda wildcards: SSC[wildcards.sample]
+        ssc=lambda wildcards: ID_MAP[wildcards.sample]
     shell:
         """
         zcat {input} \
@@ -45,7 +47,7 @@ rule raw_cnmops:
 
 def raw_cnvnator_bed(wildcards):
     path = 'original_calls/cnvnator/{0}.{1}.win100.bp200.sort.bedpe'
-    return path.format(SSC[wildcards.sample], wildcards.svtype)
+    return path.format(ID_MAP[wildcards.sample], wildcards.svtype)
 
 rule raw_cnvnator:
     input:
@@ -59,7 +61,7 @@ rule raw_cnvnator:
 
 def raw_genomestrip_bed(wildcards):
     path = 'original_calls/genomestrip/{0}.genomestrip.{1}.bed'
-    return path.format(SSC[wildcards.sample], wildcards.svtype)
+    return path.format(ID_MAP[wildcards.sample], wildcards.svtype)
 
 rule raw_genomestrip:
     input:
