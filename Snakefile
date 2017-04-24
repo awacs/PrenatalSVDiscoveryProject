@@ -25,5 +25,5 @@ rule all:
     input:
         expand('preprocessing/filtered_vcfs/{source}.{quad}.vcf',
                source=PESR_SOURCES, quad=QUADS),
-        expand('preprocessing/std_beds/merged_algs/{sample}.{svtype}.merged.bed',
+        expand('preprocessing/std_beds/merged_algs/{sample}.{svtype}.cov.bed',
                sample=SAMPLES, svtype=CNV)

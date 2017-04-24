@@ -15,18 +15,6 @@ with open(config['samples']) as slist:
 ID_MAP = {k: v for k, v in ID_MAP.items() if k in SAMPLES}
 SOURCES = config['depth_sources']
 
-STAT_SOURCES = 'cnmops cnvnator genomestrip merged'.split()
-
-SVTYPES = 'del dup'.split()
-DISTS = [0, 100, 200, 500]
-
-# rule all:
-#     input:
-#         merged='preprocessing/std_beds/{source}/{sample}.{svtype}.merged.bed' 
-#         expand('{source}/{svtype}/{dist}/{sample}.merged.bed',
-#                source=STAT_SOURCES, svtype=SVTYPES, dist=DISTS, sample=SAMPLES)
-#        expand('merged_cov.{cat}.{svtype}.{dist}.bed.gz',
-#               svtype=SVTYPES, cat='merged check'.split(), dist=DISTS)
 
 rule standardize_cnmops:
     input:
@@ -94,57 +82,28 @@ rule merge:
     shell:
         """
         bedtools merge -i {input} -d {params.dist} -c 4,5,6 -o sum \
-            | bedtools coverage -a stdin -b {input} \
-            | awk -v OFS="\\t" '{{print $1, $2, $3, $3-$2, $4, $5, $6, $10}}' \
+            | awk -v OFS="\\t" '{{print $1, $2, $3, $3-$2}}' \
             > {output.merged};
         """
 
-#rule get_stats:
-#    input:
-#        pass
-#    output:
-#        pass
-#    shell:
-#        """
-#        wc -l {input} \
-#            | cut -f1 \
-#            | paste <(echo -e "{wildcards.sample}\\t{wildcards.svtype}\\t{wildcards.source}\\traw") - \
-#            > {output.stats};
-#        wc -l {output.merged} \
-#            | cut -f1 \
-#            | paste <(echo -e "{wildcards.sample}\\t{wildcards.svtype}\\t{wildcards.source}\\tmerged") - \
-#            >> {output.stats};
-#        """
+rule caller_coverage:
+    input:
+        merged='preprocessing/std_beds/merged_algs/{sample}.{svtype}.merged.bed',
+        originals=expand('preprocessing/std_beds/{source}/{{sample}}.{{svtype}}.merged.bed', source=SOURCES)
+    output:
+        'preprocessing/std_beds/merged_algs/{sample}.{svtype}.cov.bed'
+    shell:
+        """
+        bedtools coverage -a {input.merged} -b {input.originals[0]} \
+            | cut -f 1-4,8 \
+            | bedtools coverage -a stdin -b {input.originals[1]} \
+            | cut -f 1-5,9 \
+            | bedtools coverage -a stdin -b {input.originals[2]} \
+            | cut -f 1-6,10 \
+            | awk -v OFS="\\t" '{{print $1, $2, $3, "{wildcards.sample}", $4, $5, $6, $7}}' \
+            > {output}
+        """
 
-#rule merge_stats:
-#    input:
-#        expand('{source}/{svtype}/{dist}/{sample}.stats',
-#               source=STAT_SOURCES, svtype=SVTYPES, sample=SAMPLES)
-#    output:
-#        'merge.stats'
-#    shell:
-#        """
-#        cat {input} > {output}
-#        """
-
-#rule caller_coverage:
-#    input:
-#        merged='merged/{svtype}/{dist}/{sample}.merged.bed',
-#        originals=expand('{source}/{{svtype}}/{{dist}}/{{sample}}.merged.bed', source=SOURCES)
-#    output:
-#        'merged/{svtype}/{dist}/{sample}.merged.cov.bed'
-#    shell:
-#        """
-#        bedtools coverage -a {input.merged} -b {input.originals[0]} \
-#            | cut -f 1-4,9 \
-#            | bedtools coverage -a stdin -b {input.originals[1]} \
-#            | cut -f 1-5,9 \
-#            | bedtools coverage -a stdin -b {input.originals[2]} \
-#            | cut -f 1-6,10 \
-#            | awk -v OFS="\\t" '{{print $1, $2, $3, "{wildcards.sample}", $4, $5, $6, $7}}' \
-#            > {output}
-#        """
-#
 #rule merge_cov:
 #    input:
 #        expand('{{cat}}/{{svtype}}/{{dist}}/{sample}.merged.cov.bed',
@@ -157,25 +116,6 @@ rule merge:
 #            | cat - {input} | sort -k1,1V -k2,2n | bgzip -c > {output}
 #        """
 #
-#rule check_coverage:
-#    input:
-#        merged='cnMOPS_cnvnator_genomestrip_Merge/{sample}_Merged_0.gz',
-#        originals=expand('{source}/{{svtype}}/{{dist}}/{{sample}}.merged.bed', source=SOURCES)
-#    output:
-#        'check/{svtype}/{dist}/{sample}.merged.cov.bed'
-#    shell:
-#        """
-#        zcat {input.merged} \
-#            | fgrep -v -e "X" -e "Y" \
-#            | bedtools coverage -a stdin -b {input.originals[0]} \
-#            | cut -f 1-3,7 \
-#            | bedtools coverage -a stdin -b {input.originals[1]} \
-#            | cut -f 1-4,8 \
-#            | bedtools coverage -a stdin -b {input.originals[2]} \
-#            | cut -f 1-5,9 \
-#            | awk -v OFS="\\t" '{{print $1, $2, $3, "{wildcards.sample}", $3-$2, $4, $5, $6}}' \
-#            > {output}
-#        """
 
 
 
