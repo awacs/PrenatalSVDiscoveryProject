@@ -29,14 +29,18 @@ algorithm was run on a per-quad basis.
 
 All variables controlling pipeline operation can be modified in `config.yaml`.
 
-* `quads`: List of quads (or other batch identifier) on which to run the
-  pipeline.
+* `quads` : filepath  
+    Path to list of quads (or other batch identifier) on which to run the
+pipeline.
 
-* `samples`: List of all samples represented when merging the quads.
+* `samples` : filepath  
+    Path to list of all samples represented when merging the quads.
 
-* `pesr_sources`: List of all PE/SR algorithms to merge.
+* `pesr_sources` : list of strings  
+    List of all PE/SR algorithms to merge.
 
-* `svtypes`: List of SV classes to consider when combining PE/SR variants.
+* `svtypes` : list of strings  
+    List of SV classes to consider when combining PE/SR variants.
 
 ## Pipeline modules
 
