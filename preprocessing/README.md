@@ -20,3 +20,20 @@ per-svtype basis (e.g. Delly inversions).
 
 * `filtered_vcfs/{source}.{quad}.vcf`  
     VCFs with calls specific to outlier samples or null in all samples removed.  
+
+* `std_beds/`
+    * `{source}/{sample}.{svtype}.raw.bed`  
+        Raw calls. Columns are standardized to chrom, start, end, svsize
+    * `{source}/{sample}.{svtype}.merged.bed`  
+        Raw beds subjected to bedtools merged.
+    * `merged_algs/{sample}.{svtype}.raw.bed`  
+        Sorted concatenation of raw calls.
+    * `merged_algs/{sample}.{svtype}.merged.bed`
+        Per-sample merging of raw calls across all algorithms.
+    * `merged_algs/{sample}.{svtype}.cov.bed`  
+        Final per-sample standardized bed. Each merged call is queried for
+        coverage by each individual algorithm's callset in order to determine 
+        the algorithms which predicted the variant.  Columns are chrom, start, 
+        end, sample svsize, cnmops coverage, cnvnator coverage, and genomestrip 
+        coverage. 
+        
