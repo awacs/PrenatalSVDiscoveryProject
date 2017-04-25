@@ -36,4 +36,5 @@ per-svtype basis (e.g. Delly inversions).
         the algorithms which predicted the variant.  Columns are chrom, start, 
         end, sample svsize, cnmops coverage, cnvnator coverage, and genomestrip 
         coverage. 
-        
+    * `merged.{svtype}.bed.gz`  
+        Concatenation of standardized `*.cov.bed` from all samples.
