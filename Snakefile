@@ -27,4 +27,4 @@ rule all:
     input:
         expand('preprocessing/filtered_vcfs/{source}.{quad}.vcf',
                source=PESR_SOURCES, quad=QUADS),
-        expand('integration/depth.{svtype}.svof', svtype=CNV),
+        expand('integration/svof/depth.{svtype}.svof', svtype=CNV),

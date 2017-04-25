@@ -68,7 +68,7 @@ rule merge_across_chroms:
     input:
         expand('integration/bedcluster/merged.{{svtype}}.{chrom}.svof', chrom=CHROMS)
     output:
-        'integration/depth.{svtype}.svof'
+        'integration/svof/depth.{svtype}.svof'
     shell:
         """
         head -n1 {input[0]} > {output};
