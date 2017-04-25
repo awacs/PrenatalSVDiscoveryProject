@@ -16,7 +16,7 @@ rule standardize_vcf:
         'preprocessing/std_vcfs/{source}.{quad}.vcf'
     shell:
         """
-        standardize-vcf {input} {output} {wildcards.source}
+        standardize_vcf {input} {output} {wildcards.source}
         """
 
 rule identify_vcf_outliers:
