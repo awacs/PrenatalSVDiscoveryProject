@@ -1,6 +1,7 @@
 # SV Preprocessing
 
-The preprocessing module standardizes VCFs and removes calls specific to
+## PE/SR preprocessing
+The PE/SR preprocessing module standardizes VCFs and removes calls specific to
 outlying samples. Outliers are determined to be samples with more than 
 `(Q3 + 1.5 * IQR)` variants observed, and are calculated on a per-algorithm,
 per-svtype basis (e.g. Delly inversions).
@@ -20,6 +21,12 @@ per-svtype basis (e.g. Delly inversions).
 
 * `filtered_vcfs/{source}.{quad}.vcf`  
     VCFs with calls specific to outlier samples or null in all samples removed.  
+
+
+## RD preprocessing
+The RD preprocessing module merges all calls made by any depth algorithm in a 
+sample to create a single bed per sample, annotated with the algorithms which
+contributed to each merged call.
 
 * `std_beds/`
     * `{source}/{sample}.{svtype}.raw.bed`  
