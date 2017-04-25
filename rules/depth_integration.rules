@@ -1,0 +1,106 @@
+"""
+rd_merged.snake
+Matthew Stone
+
+
+Merge depth caller CNV across programs and samples.
+
+Input beds are product of cnv_clean; columns=chr,start,end,svtype,names
+
+1) bedtools merge to collapse CNV across programs within each sample
+2) 50% reciprocal overlap across samples
+3) bedcluster
+"""
+
+configfile: 'config.yaml'
+
+
+with open(config['samples']) as slist:
+    SAMPLES = [sample.strip() for sample in slist.readlines()]
+
+SOURCES = ['cnmops']
+CHROMS = [str(x) for x in range(1, 23)] + 'X Y'.split()
+SVTYPES = 'del dup'.split()
+
+rule all:
+    input:
+        #expand('bedcluster/bedcluster.{svtype}.{chrom}.bed',
+        #       svtype=SVTYPES, chrom=CHROMS)
+        expand('svof/SFARI.519.{svtype}.svof', svtype=SVTYPES)
+        
+
+rule combine_autosome_allosome:
+    output:
+        bed='merged_cnv/merged.{svtype}.bed.gz',
+        tbi='merged_cnv/merged.{svtype}.bed.gz.tbi',
+    shell:
+        """
+        ./scripts/merge.sh {wildcards.svtype}
+        """
+
+
+# Intersect merged calls across samples
+rule intersect:
+    input:
+        'merged_cnv/merged.{svtype}.bed.gz'
+    output:
+        intersected='intersect/intersect.{svtype}.{chrom}.bed.gz'
+    params:
+        frac=0.8
+    shell:
+        """
+        bedtools intersect \
+          -a <(tabix {input} {wildcards.chrom} | cut -f -6) \
+          -b <(tabix {input} {wildcards.chrom} | cut -f -6) \
+          -wa -wb -loj -r -f {params.frac} | bgzip -c > {output.intersected}
+        """
+
+def variant_prefix(wildcards):
+    return 'depth_{0}_{1}'.format(wildcards.svtype, wildcards.chrom)
+
+# Cluster intersected bed
+rule bedcluster:
+    input:
+        'intersect/intersect.{svtype}.{chrom}.bed.gz'
+    output:
+        'bedcluster/bedcluster.{svtype}.{chrom}.bed' 
+    params:
+        prefix=variant_prefix
+    shell:
+        """
+        zcat {input} \
+          | ~/code/svcf/scripts/bedcluster -p {params.prefix} --merge-coordinates \
+          > {output}
+        """
+
+#rule merge_bedcluster:
+#    input:
+#        expand('bedcluster/bedcluster.{svtype}.{chrom}.bed',
+#               svtype=SVTYPES, chrom=CHROMS)
+#    output:
+#        'bedcluster/SFARI.519.bedcluster.bed'
+#        
+
+# Convert clustered bed to svof
+rule make_svof:
+    input:
+        'bedcluster/bedcluster.{svtype}.{chrom}.bed' 
+    output:
+        'svof/all.{svtype}.{chrom}.svof'
+    params:
+        sources=','.join(SOURCES)
+    shell:
+        "~/code/svcf/scripts/make_svof.py -s {input} {params.sources} {output}"
+
+# Merge split svofs
+rule merge_across_chroms:
+    input:
+        expand('svof/all.{{svtype}}.{chrom}.svof', chrom=CHROMS)
+    output:
+        'svof/SFARI.519.{svtype}.svof'
+    shell:
+        """
+        head -n1 {input[0]} > {output};
+        for f in {input}; do sed '1d' $f >> {output}; done
+        """
+
