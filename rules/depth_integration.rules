@@ -12,22 +12,10 @@ Input beds are product of cnv_clean; columns=chr,start,end,svtype,names
 3) bedcluster
 """
 
-configfile: 'config.yaml'
+SOURCES = config['depth_sources']
 
-
-with open(config['samples']) as slist:
-    SAMPLES = [sample.strip() for sample in slist.readlines()]
-
-# SOURCES = ['cnmops']
-CHROMS = [str(x) for x in range(1, 23)] + 'X Y'.split()
-SVTYPES = 'del dup'.split()
-
-#rule all:
-#    input:
-#        #expand('bedcluster/bedcluster.{svtype}.{chrom}.bed',
-#        #       svtype=SVTYPES, chrom=CHROMS)
-#        expand('svof/SFARI.519.{svtype}.svof', svtype=SVTYPES)
-        
+with open(config['chroms']) as clist:
+    CHROMS = [c.strip() for c in clist.readlines()]
 
 # Intersect merged calls across samples
 rule depth_intersect:
@@ -65,7 +53,7 @@ rule bedcluster:
         intersect_bed='integration/depth_intersect/merged.{svtype}.{chrom}.bed.gz',
         variant_list='integration/depth_variant_lists/merged.{svtype}.{chrom}.list'
     output:
-        'integration/bedcluster/merged.{svtype}.{chrom}.bed'
+        'integration/bedcluster/merged.{svtype}.{chrom}.svof'
     params:
         prefix=variant_prefix
     shell:
@@ -75,24 +63,16 @@ rule bedcluster:
           > {output}
         """
 
-#rule merge_bedcluster:
-#    input:
-#        expand('bedcluster/bedcluster.{svtype}.{chrom}.bed',
-#               svtype=SVTYPES, chrom=CHROMS)
-#    output:
-#        'bedcluster/SFARI.519.bedcluster.bed'
-#        
-
 # Convert clustered bed to svof
 rule make_svof:
     input:
-        'bedcluster/bedcluster.{svtype}.{chrom}.bed' 
+        'integration/bedcluster/merged.{svtype}.{chrom}.bed'
     output:
-        'svof/all.{svtype}.{chrom}.svof'
+        'integration/svof/depth.{svtype}.{chrom}.svof'
     params:
         sources=','.join(SOURCES)
     shell:
-        "~/code/svcf/scripts/make_svof.py -s {input} {params.sources} {output}"
+        "make_svof -s {input} {params.sources} {output}"
 
 # Merge split svofs
 rule merge_across_chroms:

@@ -27,5 +27,5 @@ rule all:
     input:
         expand('preprocessing/filtered_vcfs/{source}.{quad}.vcf',
                source=PESR_SOURCES, quad=QUADS),
-        expand('integration/bedcluster/merged.{svtype}.{chrom}.bed',
+        expand('integration/bedcluster/merged.{svtype}.{chrom}.svof',
                svtype=CNV, chrom=CHROMS)
