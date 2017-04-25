@@ -3,6 +3,7 @@ configfile: 'config.yaml'
 
 include: 'rules/pesr_preprocessing.rules'
 include: 'rules/depth_preprocessing.rules'
+include: 'rules/depth_integration.rules'
 
 PESR_SOURCES = config['pesr_sources']
 DEPTH_SOURCES = config['depth_sources']
@@ -15,6 +16,9 @@ with open(config['quads']) as qlist:
 with open(config['samples']) as slist:
     SAMPLES = [s.strip() for s in slist.readlines()]
 
+with open(config['chroms']) as clist:
+    CHROMS = [c.strip() for c in clist.readlines()]
+
 wildcard_constraints:
     source='(' + '|'.join(SOURCES) + ')',
     sample='(' + '|'.join(SAMPLES) + ')'
@@ -23,5 +27,5 @@ rule all:
     input:
         expand('preprocessing/filtered_vcfs/{source}.{quad}.vcf',
                source=PESR_SOURCES, quad=QUADS),
-        expand('preprocessing/std_beds/merged.{svtype}.bed.gz',
-               svtype=CNV)
+        expand('integration/depth_intersect/merged.{svtype}.{chrom}.bed.gz',
+               svtype=CNV, chrom=CHROMS)

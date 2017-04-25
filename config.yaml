@@ -1,6 +1,7 @@
 quads: ref/quads.test.list
 samples: ref/samples.test.list
 idmap: ref/519families_idmapping
+chroms: ref/chroms.test.list
 
 pesr_sources:
     - delly
