@@ -1,11 +1,12 @@
-data/*
-logs/
-scratch/
+# Ignore hidden swap and snakemake files
 .*.swp
 .snakemake*
 
 # Don't track module data
+data/*
+logs/*
 preprocessing/*
+integration/*
 
 # Do track each module's scripts, Snakefiles, configurations, and READMEs
 !*/scripts/
