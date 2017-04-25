@@ -18,33 +18,23 @@ configfile: 'config.yaml'
 with open(config['samples']) as slist:
     SAMPLES = [sample.strip() for sample in slist.readlines()]
 
-SOURCES = ['cnmops']
+# SOURCES = ['cnmops']
 CHROMS = [str(x) for x in range(1, 23)] + 'X Y'.split()
 SVTYPES = 'del dup'.split()
 
-rule all:
-    input:
-        #expand('bedcluster/bedcluster.{svtype}.{chrom}.bed',
-        #       svtype=SVTYPES, chrom=CHROMS)
-        expand('svof/SFARI.519.{svtype}.svof', svtype=SVTYPES)
+#rule all:
+#    input:
+#        #expand('bedcluster/bedcluster.{svtype}.{chrom}.bed',
+#        #       svtype=SVTYPES, chrom=CHROMS)
+#        expand('svof/SFARI.519.{svtype}.svof', svtype=SVTYPES)
         
 
-rule combine_autosome_allosome:
-    output:
-        bed='merged_cnv/merged.{svtype}.bed.gz',
-        tbi='merged_cnv/merged.{svtype}.bed.gz.tbi',
-    shell:
-        """
-        ./scripts/merge.sh {wildcards.svtype}
-        """
-
-
 # Intersect merged calls across samples
-rule intersect:
+rule depth_intersect:
     input:
-        'merged_cnv/merged.{svtype}.bed.gz'
+        'preprocessing/std_beds/merged.{svtype}.bed.gz'
     output:
-        intersected='intersect/intersect.{svtype}.{chrom}.bed.gz'
+        'integration/depth_intersect/merged.{svtype}.{chrom}.bed.gz'
     params:
         frac=0.8
     shell:
@@ -52,7 +42,7 @@ rule intersect:
         bedtools intersect \
           -a <(tabix {input} {wildcards.chrom} | cut -f -6) \
           -b <(tabix {input} {wildcards.chrom} | cut -f -6) \
-          -wa -wb -loj -r -f {params.frac} | bgzip -c > {output.intersected}
+          -wa -wb -loj -r -f {params.frac} | bgzip -c > {output}
         """
 
 def variant_prefix(wildcards):
