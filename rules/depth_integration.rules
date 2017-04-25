@@ -45,21 +45,33 @@ rule depth_intersect:
           -wa -wb -loj -r -f {params.frac} | bgzip -c > {output}
         """
 
+# List of unique variant lists necessary for running bedcluster
+rule make_depth_variant_lists:
+    input:
+        'preprocessing/std_beds/merged.{svtype}.bed.gz'
+    output:
+        'integration/depth_variant_lists/merged.{svtype}.{chrom}.list'
+    shell:
+        """
+        tabix {input} {wildcards.chrom} | cut -f4 > {output}
+        """
+
 def variant_prefix(wildcards):
     return 'depth_{0}_{1}'.format(wildcards.svtype, wildcards.chrom)
 
 # Cluster intersected bed
 rule bedcluster:
     input:
-        'intersect/intersect.{svtype}.{chrom}.bed.gz'
+        intersect_bed='integration/depth_intersect/merged.{svtype}.{chrom}.bed.gz',
+        variant_list='integration/depth_variant_lists/merged.{svtype}.{chrom}.list'
     output:
-        'bedcluster/bedcluster.{svtype}.{chrom}.bed' 
+        'integration/bedcluster/merged.{svtype}.{chrom}.bed'
     params:
         prefix=variant_prefix
     shell:
         """
-        zcat {input} \
-          | ~/code/svcf/scripts/bedcluster -p {params.prefix} --merge-coordinates \
+        zcat {input.intersect_bed} \
+          | bedcluster {input.variant_list} -p {params.prefix} --merge-coordinates \
           > {output}
         """
 
