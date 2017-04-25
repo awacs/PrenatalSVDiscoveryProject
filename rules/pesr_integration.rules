@@ -1,0 +1,104 @@
+"""
+pesr.snake
+Matthew Stone <mstone5@mgh.harvard.edu>
+
+Cluster SV called by PE/SR-based algorithms. 
+"""
+
+configfile: 'config.yaml'
+
+SOURCES = config['sources']
+
+# Test parameters
+with open(config['quadlist']) as qlist:
+    QUADS = [q.strip() for q in qlist.readlines()]
+
+CHROMS = [str(x) for x in range(1, 23)] + 'X Y'.split()
+
+localrules: all, clean_splits
+
+rule all:
+    input:
+        svof='svof/DLMW.519.svof',
+        clean='clean_splits.done'
+    shell:
+        "rm {input.clean}"
+
+rule vcfcluster:
+    """Cluster calls across samples and sources. Split by chromosome."""
+    input:
+        list='519.dlmw.vcflist'
+    output:
+        vcf='vcfcluster/DLMW.519.{chrom}.vcf',
+        bed='clusterbeds/DLMW.519.{chrom}.bed'
+    params:
+        blacklist=config['blacklist'],
+        svsize=0,
+        prefix='DLMW.519',
+        dist=300,
+        frac=0.1
+    shell:
+        """
+        ~/code/svcf/scripts/vcfcluster \
+            -f {input.list} \
+            -o {output.vcf} \
+            -c {wildcards.chrom} \
+            -d {params.dist} \
+            -p {params.prefix} \
+            -z {params.svsize} \
+            -x {params.blacklist} \
+            -r {params.frac} \
+            --svtypes del,dup \
+            --cluster-bed {output.bed}
+        """
+
+rule merge_vcf:
+    """Merge chromosome VCFs"""
+    input:
+        vcfs=expand('vcfcluster/DLMW.519.{chrom}.vcf', chrom=CHROMS)
+    output:
+        vcf='vcfcluster/DLMW.519.vcf.gz',
+        index='vcfcluster/DLMW.519.vcf.gz.tbi'
+    params:
+        tmpdir='/scratch/miket/my520/tmp'
+    shell:
+        """
+        tmpdir=$(mktemp -d -p {params.tmpdir});
+        vcf-concat {input.vcfs} | vcf-sort -c -t $tmpdir | bgzip -c > {output.vcf}; 
+        tabix -p vcf {output.vcf}; 
+        """
+
+rule split_melt:
+    input:
+        'vcfcluster/DLMW.519.{chrom}.vcf'
+    output:
+        'svof/DLMW.519.{chrom}.svof'
+    params:
+        source_list='delly,lumpy,manta,wham'
+    shell:
+        "~/code/svcf/scripts/svcf-melt -s {params.source_list} {input} {output}"
+
+rule merge_melt:
+    input:
+        expand('svof/DLMW.519.{chrom}.svof', chrom=CHROMS)
+    output:
+        svof='svof/DLMW.519.svof'
+    params:
+        source_list='manta,wham'
+    shell:
+        """
+        head -n1 {input[0]} > {output};
+        for f in {input}; do sed '1d' $f; done | sort -k1,1V -k2,2n >> {output}
+        """
+
+rule clean_splits:
+    input:
+        vcfs=expand('vcfcluster/DLMW.519.{chrom}.vcf', chrom=CHROMS),
+        svofs=expand('svof/DLMW.519.{chrom}.svof', chrom=CHROMS),
+        merged_vcf='vcfcluster/DLMW.519.vcf.gz',
+        merged_svof='svof/DLMW.519.svof'
+    output:
+        touch('clean_splits.done')
+    shell:
+        #"rm {input.vcfs} {input.svofs}"
+        "echo clean"
