@@ -7,10 +7,25 @@ rule RdTest:
         zrank='rdtest/{source}/merged.{chrom}.bed_HomPowerPZRank.txt',
     shell:
         """
-        Rscript {config[gt_script]} -b {input.bed} -c {config[bincov]} \
-          -o merged.{wildcards.chrom}.bed -v TRUE -g NULL \
-          -j rdtest/{wildcards.source}/ > /dev/null;
+        cp {input.bed} {output.pk};
+        cp {input.bed} {output.zrank};
         """
+        # """
+        # Rscript {config[gt_script]} -b {input.bed} -c {config[bincov]} \
+        #   -o merged.{wildcards.chrom}.bed -v TRUE -g NULL \
+        #   -j rdtest/{wildcards.source}/ > /dev/null;
+        # """
+
+rule rdtest_filter:
+    input:
+        zrank='rdtest/{source}/merged.{chrom}.bed_HomPowerPZRank.txt',
+    output:
+        'rdtest/{source}/merged.rdtest_pass.{chrom}.list'
+    shell:
+        """
+        sed '1d' {input} | cut -f4 > {output}
+        """
+    
 
 # rule make_pk_list:
 #     input:
