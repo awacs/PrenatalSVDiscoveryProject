@@ -31,14 +31,7 @@ wildcard_constraints:
 
 rule all:
     input:
-        #expand('preprocessing/std_beds/merged.{svtype}.bed.gz', svtype=CNV),
-        #expand('integration/bedcluster/merged.{chrom}.svof',
-        #       chrom=CHROMS)
-        #expand('integration/depth_variant_lists/merged.{svtype}.{chrom}.list',
-        #       svtype=CNV, chrom=CHROMS)
-        #expand('integration/depth_intersect/merged.{svtype}.{chrom}.bed.gz',
-        #       svtype=CNV, chrom=CHROMS)
-        #expand('integration/rdtest_beds/depth/merged.{chrom}.bed', chrom=CHROMS)
+        expand('integration/rdtest_filtered/depth/merged.{chrom}.svof', chrom=CHROMS),
         expand('rdtest/{source}/merged.rdtest_pass.{chrom}.list',
                source=RDTEST_SOURCES, chrom=CHROMS),
 

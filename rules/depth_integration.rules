@@ -84,3 +84,16 @@ rule make_depth_rdtest_bed:
         'integration/rdtest_beds/depth/merged.{chrom}.bed'
     script:
         "scripts/make_depth_rdtest_beds.py"
+
+rule rdtest_filter_depth:
+    input:
+        svof='integration/bedcluster/merged.{chrom}.svof',
+        list='rdtest/depth/merged.rdtest_pass.{chrom}.list'
+    output:
+        svof='integration/rdtest_filtered/depth/merged.{chrom}.svof'
+    shell:
+        """
+        fgrep -w -f {input.list} {input.svof} \
+          | cat <(head -n1 {input.svof}) - \
+          > {output}
+        """
