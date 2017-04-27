@@ -1,0 +1,126 @@
+"""
+pesr_rd.snake
+Matthew Stone
+
+Pipeline for merging PE/SR and RD calls.
+
+Defaults to using coordinates of PE/SR calls when overlap exists.
+"""
+
+configfile: 'config.yaml'
+
+with open(config['samples']) as slist:
+    SAMPLES = [l.strip() for l in slist.readlines()]
+
+CHROMS = [str(x) for x in range(1, 23)] + 'X Y'.split()
+#CHROMS = [str(x) for x in range(1, 23)]
+SOURCES = ['pesr', 'rd']
+
+localrules: all, merge_bed
+
+# TODO: pull out {group}s, just run snake in one directory
+
+rule all:
+    input:
+        #expand('pesr_sect_rd/{sample}.pesr_sect_rd.{chrom}.bed',
+        expand('depth_only/{sample}.depth_only.bed', sample=SAMPLES)
+        #'pesr_rd/SFARI.519.MW_cnmops.bed'
+
+rule intersect_pesr:
+    input:
+        pesr='pesr/svof/DLMW.519.svof',
+        rd='depth/svof/all.svof'
+    output:
+        'pesr_sect_rd/{sample}.pesr_sect_rd.bed'
+    params:
+        job_name='intersect_pesr',
+        frac=0.8
+    shell:
+        """
+        ./scripts/intersect_pesr.sh {input.pesr} {input.rd} {wildcards.sample} {params.frac} {output}
+        """
+#        "bedtools intersect "
+#        "-a <(cut -f1-7 {input.pesr} | fgrep -e {wildcards.sample}) "
+#        "-b <(cut -f1-7 {input.rd} | fgrep -e {wildcards.sample}) "
+#        "-wa -wb -loj -r -f {params.frac} | awk '($6==$13 || $13==".")' > {output}"
+      
+# Grep out RD IDs not present in pesr overlap 
+# Handle PE/SR sites with multiple overlapping depth calls 
+rule depth_only:
+    input:
+        pesr_rd='pesr_sect_rd/{sample}.pesr_sect_rd.bed',
+        rd='depth/svof/all.svof'
+    output:
+        'depth_only/{sample}.depth_only.bed'
+    params:
+        frac=0.8
+    shell:
+        """
+        ./scripts/depth_only.sh {input.pesr_rd} {input.rd} {wildcards.sample} {output}
+        """
+
+rule merge:
+    input:
+        expand('{{dirname}}/{sample}.{{dirname}}.bed', sample=SAMPLES)
+    output:
+        '{dirname}/all.{dirname}.bed'
+    shell:
+        """
+        cat {input} | sort -k1,1V -k2,2n > {output}
+        """
+
+rule get_pairings:
+    input:
+        pesr='pesr_sect_rd/all.pesr_sect_rd.bed'
+    output:
+        'pesr_rd/pesr_depth_pairings.txt'
+    shell:
+        """
+        fgrep -e "depth" {input.pesr} \
+            | cut -f5,12 | uniq | sort | uniq > {output}
+        """
+
+rule get_signal_specific:
+    input:
+        pesr='pesr_sect_rd/all.pesr_sect_rd.bed',
+        depth='depth_only/all.depth_only.bed',
+        pairings='pesr_rd/pesr_depth_pairings.txt'
+    output:
+        'pesr_rd/pesr_only.bed',
+        'pesr_rd/depth_only.bed',
+        'pesr_rd/pesr_rd.pesr.bed',
+        'pesr_rd/pesr_rd.depth.bed',
+    shell:
+        """
+        ./scripts/get_signal_specific.sh;
+        ./scripts/get_pesr_and_rd.sh;
+        """
+
+rule merge_pesr_rd:
+    input:
+        pesr='pesr_rd/pesr_rd.pesr.bed',
+        depth='pesr_rd/pesr_rd.depth.bed',
+        pairings='pesr_rd/pesr_depth_pairings.txt'
+    output:
+        pesr_rd='pesr_rd/pesr_and_rd.bed',
+        merged='pesr_rd/pesr_rd.merged.bed'
+    shell:
+        """
+        ./scripts/merge_pesr_rd.py {input} {output.pesr_rd};
+        cat {input.pesr} {input.depth} {output.pesr_rd} \
+            | sort -k1,1V -k2,2n > {output.merged};
+        """
+
+rule collect_variants:
+    input:
+        'pesr_rd/pesr_rd.merged.bed'
+    output:
+        bed='pesr_rd/variants.bed';
+        final='variants/polymorphic_cnv.variants.bed.gz'
+    shell:
+        """
+        ./scripts/collect_variants.py {input} {output.bed};
+        cut -f1-10 {output.bed} | sed -e '1s/^/#/' | bgzip -c > {output.final};
+        tabix -p bed {output.final}
+        """
+    
