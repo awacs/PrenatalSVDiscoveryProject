@@ -38,3 +38,15 @@ rule remove_vcf_outliers:
     script:
         "scripts/remove_outliers.py"
 
+rule sort_vcfs:
+    input:
+        'preprocessing/filtered_vcfs/{source}.{quad}.vcf'
+    output:
+        vcf='preprocessing/filtered_vcfs/{source}.{quad}.vcf.gz',
+        idx='preprocessing/filtered_vcfs/{source}.{quad}.vcf.gz.tbi',
+    shell:
+        """
+        vcf-sort -c {input} | bgzip -c > {output.vcf};
+        tabix -p vcf {output.vcf}
+        """
+

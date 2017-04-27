@@ -19,8 +19,9 @@ per-svtype basis (e.g. Delly inversions).
         - `var_count`: number of variants observed in the sample  
         - `cutoff`: Q3 + 1.5 * IQR for that svtype/algorithm  
 
-* `filtered_vcfs/{source}.{quad}.vcf`  
-    VCFs with calls specific to outlier samples or null in all samples removed.  
+* `filtered_vcfs/{source}.{quad}.vcf.gz`  
+    VCFs with calls specific to outlier samples or null in all samples removed.
+    Sorted and tabix-indexed to prepare for clustering.
 
 
 ## RD preprocessing

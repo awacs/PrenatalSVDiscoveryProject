@@ -25,6 +25,6 @@ wildcard_constraints:
 
 rule all:
     input:
-        expand('preprocessing/filtered_vcfs/{source}.{quad}.vcf',
+        expand('preprocessing/filtered_vcfs/{source}.{quad}.vcf.gz',
                source=PESR_SOURCES, quad=QUADS),
         expand('integration/svof/depth.{svtype}.svof', svtype=CNV),
