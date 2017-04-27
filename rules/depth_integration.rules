@@ -13,6 +13,7 @@ Input beds are product of cnv_clean; columns=chr,start,end,svtype,names
 """
 
 SOURCES = config['depth_sources']
+CNV = config['cnv_types']
 
 with open(config['chroms']) as clist:
     CHROMS = [c.strip() for c in clist.readlines()]
@@ -53,7 +54,7 @@ rule bedcluster:
         intersect_bed='integration/depth_intersect/merged.{svtype}.{chrom}.bed.gz',
         variant_list='integration/depth_variant_lists/merged.{svtype}.{chrom}.list'
     output:
-        'integration/bedcluster/merged.{svtype}.{chrom}.svof'
+        'integration/bedcluster/svtype_splits/merged.{svtype}.{chrom}.svof'
     params:
         prefix=variant_prefix
     shell:
@@ -64,21 +65,21 @@ rule bedcluster:
         """
 
 # Merge split svofs
-rule merge_across_chroms:
+rule merge_across_svtypes:
     input:
-        expand('integration/bedcluster/merged.{{svtype}}.{chrom}.svof', chrom=CHROMS)
+        expand('integration/bedcluster/svtype_splits/merged.{svtype}.{{chrom}}.svof',
+               svtype=CNV)
     output:
-        'integration/svof/depth.{svtype}.svof'
+        'integration/bedcluster/merged.{chrom}.svof'
     shell:
         """
         head -n1 {input[0]} > {output};
         for f in {input}; do sed '1d' $f | sort -k1,1V -k2,2n >> {output}; done
         """
 
-rule make_depth_rdtest_beds:
+rule make_depth_rdtest_bed:
     input:
-        dels='integration/bedcluster/merged.del.{chrom}.svof',
-        dups='integration/bedcluster/merged.dup.{chrom}.svof'
+        svof='integration/bedcluster/merged.{chrom}.svof'
     output:
         'integration/rdtest_beds/depth/merged.{chrom}.bed'
     script:

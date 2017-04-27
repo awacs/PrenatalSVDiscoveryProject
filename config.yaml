@@ -23,5 +23,5 @@ svtypes:
     - BND
 
 cnv_types:
-    - del
-    - dup
+    - DEL
+    - DUP

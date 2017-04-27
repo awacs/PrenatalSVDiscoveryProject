@@ -16,20 +16,25 @@ ID_MAP = {k: v for k, v in ID_MAP.items() if k in SAMPLES}
 SOURCES = config['depth_sources']
 
 
+def raw_cnmops_allosomal(wildcards):
+    path = 'data/raw_beds/cnmops_XY/{0}/{0}.allosomes.cnMOPS.merged.{1}.bed'
+    return path.format(wildcards.sample, wildcards.svtype.lower())
+    
 rule standardize_cnmops:
     """Use X/Y calls from sex split"""
     input:
         autosomal='data/raw_beds/cnmops/SFARI.519.cohort.bed.gz',
-        allosomal='data/raw_beds/cnmops_XY/{sample}/{sample}.allosomes.cnMOPS.merged.{svtype}.bed'
+        allosomal=raw_cnmops_allosomal,
     output:
         'preprocessing/std_beds/cnmops/{sample}.{svtype}.raw.bed'
     params:
-        ssc=lambda wildcards: ID_MAP[wildcards.sample]
+        ssc=lambda wildcards: ID_MAP[wildcards.sample],
+        svtype=lambda wildcards: wildcards.svtype.lower()
     shell:
         """
         zcat {input.autosomal} \
             | fgrep {wildcards.sample} \
-            | fgrep {wildcards.svtype} \
+            | fgrep {params.svtype} \
             | awk -v OFS="\\t" '($1!="X" && $1!="Y") {{print $1, $2, $3, $3-$2, "1", "0", "0"}}' \
             | cat - <(sed -e '/^#/d' {input.allosomal} | awk -v OFS="\\t" '{{print $1, $2, $3, $3-$2, 1, 0, 0}}') \
             > {output};
@@ -37,7 +42,7 @@ rule standardize_cnmops:
 
 def raw_cnvnator_bed(wildcards):
     path = 'data/raw_beds/cnvnator/{0}.{1}.win100.bp200.sort.bedpe'
-    return path.format(ID_MAP[wildcards.sample], wildcards.svtype)
+    return path.format(ID_MAP[wildcards.sample], wildcards.svtype.lower())
 
 rule standardize_cnvnator:
     input:
@@ -51,7 +56,7 @@ rule standardize_cnvnator:
 
 def raw_genomestrip_bed(wildcards):
     path = 'data/raw_beds/genomestrip/{0}.genomestrip.{1}.bed'
-    return path.format(ID_MAP[wildcards.sample], wildcards.svtype)
+    return path.format(ID_MAP[wildcards.sample], wildcards.svtype.lower())
 
 rule standardize_genomestrip:
     input:

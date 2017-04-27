@@ -30,9 +30,10 @@ def make_depth_rdtest_bed(svof):
     return bed[cols]
 
 def main():
-    dels = pd.read_table(snakemake.input.dels)
-    dups = pd.read_table(snakemake.input.dups)
-    svof = pd.concat([dels, dups]).sort_values('start')
+    #  dels = pd.read_table(snakemake.input.dels)
+    #  dups = pd.read_table(snakemake.input.dups)
+    #  svof = pd.concat([dels, dups]).sort_values('start')
+    svof = pd.read_table(snakemake.input.svof)
 
     bed = make_depth_rdtest_bed(svof)
 
