@@ -25,7 +25,7 @@ rule make_alg_vcf_list:
         expand('preprocessing/filtered_vcfs/{{source}}.{quad}.vcf.gz',
                quad=QUADS),
     output:
-        'integration/vcfcluster/vcfs.{source}.list'
+        'integration/vcflists/vcfs.{source}.list'
     run:
         with open(output[0], 'w') as fout:
             for fname in sorted(input):
@@ -35,7 +35,7 @@ rule make_alg_vcf_list:
 rule vcfcluster_by_alg:
     """Cluster calls from a single algorithm across samples."""
     input:
-        'integration/vcfcluster/vcfs.{source}.list'
+        'integration/vcflists/vcfs.{source}.list'
     output:
         vcf='integration/vcfcluster/{source}/merged.{chrom}.vcf',
         #bed='clusterbeds/DLMW.519.{chrom}.bed'
