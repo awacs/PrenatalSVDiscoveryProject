@@ -1,0 +1,100 @@
+
+configfile: 'config.yaml'
+
+variants = []
+with open(config['gt_bed']) as gt_bed:
+    for line in gt_bed:
+        if line.startswith('#'):
+            continue
+        data = line.strip().split()
+        variants.append(data[3] + '.' + data[4])
+
+localrules: all, split_calls
+
+rule all:
+    input:
+        'data/gt_results/reassigned.gt_filter.pk'
+
+wildcard_constraints:
+    variant='(CNV|Denovo.*CNV)_[0-9]+',
+    sample='[0-9]{5}.(p|s)1'
+
+rule split_calls:
+    input:
+        config['gt_bed']
+    output:
+        gt_bed='data/gt_beds/{variant}.{sample}.gt.bed',
+        blacklist='data/blacklists/{variant}.{sample}.list'
+        # touch('logs/split.done')
+    shell:
+        """
+        awk '($4=="{wildcards.variant}" && $5=="{wildcards.sample}")' {input} \
+          | cut -f -6 \
+          > {output.gt_bed};
+        awk '($4=="{wildcards.variant}" && $5=="{wildcards.sample}")' {input} \
+          | cut -f 7 \
+          | sed -e 's/,/\\n/g' \
+          > {output.blacklist};
+        """
+        # """
+        # while read chrom start end name samples svtype blacklist; do
+        #   echo -e "$chrom\\t$start\\t$end\\t$name\\t$samples\\t$svtype" > data/gt_beds/${{name}}.${{samples}}.gt.bed;
+        #   echo $blacklist | sed -e 's/,/\\n/g' > data/blacklists/${{name}}.${{samples}}.list;
+        # done < <(sed -e '/^#chr/d' {input})
+        # """
+
+        
+rule genotype:
+    input:
+        bed='data/gt_beds/{variant}.{sample}.gt.bed',
+        blacklist='data/blacklists/{variant}.{sample}.list'
+    output:
+        'data/genotyping/{variant}.{sample}.bed.pk'
+    shell:
+        """
+        module rm R/R-3.0.0;
+        module rm R/3.3.1;
+        module load R/3.3.1;
+
+        Rscript {config[gt_script]} -b {input.bed} -c {config[bincov]} \
+          -o {wildcards.variant}.{wildcards.sample}.bed -v TRUE -g NULL \
+          -j data/genotyping/ -r {input.blacklist};
+        """
+
+rule make_pk_list:
+    input:
+        expand('data/genotyping/{vs}.bed.pk', vs=variants)
+    output:
+        'scratch/reassigned.pk.list'
+    run:
+        with open(output[0], 'w') as fout:
+            for fname in input:
+                fout.write(fname + '\n')
+
+
+rule merge_pk: 
+    input:
+        'scratch/reassigned.pk.list'
+    output:
+        'data/gt_results/reassigned.pk'
+    shell:
+        """
+        cat {input} \
+          | xargs cat \
+          | sed -e '/^Chr/d' \
+          | sort -k1,1V -k2,2n \
+          | uniq \
+          | cat <(head -n1 {input} | xargs cat | head -n1) - \
+          > {output}
+        """
+
+rule gt_filter:
+    input:
+        'data/gt_results/reassigned.pk'
+    output:
+        'data/gt_results/reassigned.gt_filter.pk'
+    shell:
+        """
+        ./scripts/gt_filter.py {input} > {output}
+        """
+
