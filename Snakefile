@@ -28,7 +28,7 @@ rule all:
     input:
         expand('integration/rdtest_beds/{source}/merged.{chrom}.bed',
                source=PESR_SOURCES, chrom=CHROMS),
-        expand('integration/rdtest_beds/depth/merged.{svtype}.{chrom}.bed',
-               svtype=CNV, chrom=CHROMS),
+        expand('integration/rdtest_beds/depth/merged.{chrom}.bed',
+               chrom=CHROMS),
 
 # TODO: add rules per submodule

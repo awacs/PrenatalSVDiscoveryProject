@@ -77,23 +77,9 @@ rule merge_across_chroms:
 
 rule make_depth_rdtest_beds:
     input:
-        'integration/bedcluster/merged.{svtype}.{chrom}.svof'
+        dels='integration/bedcluster/merged.del.{chrom}.svof',
+        dups='integration/bedcluster/merged.dup.{chrom}.svof'
     output:
-        'integration/rdtest_beds/depth/merged.{svtype}.{chrom}.bed'
-    run:
-        import pandas as pd
-        svof = pd.read_table(input[0])
-        bed = svof['#chrA start end name svtype'.split()].drop_duplicates()
-
-        # Add samples
-        samples = svof.groupby('name')['sample'].agg(lambda s: ','.join(sorted(set(s))))
-        samples = samples.rename('samples').reset_index()
-        bed = pd.merge(bed, samples, on='name', how='left')
-
-        # Format
-        rename = {'#chrA': '#chrom'}
-        bed = bed.rename(columns=rename)
-        bed['svtype'] = bed.svtype.str.upper()
-   
-        cols = '#chrom start end name samples svtype'.split()
-        bed[cols].to_csv(output[0], sep='\t', index=False)
+        'integration/rdtest_beds/depth/merged.{chrom}.bed'
+    script:
+        "scripts/make_depth_rdtest_beds.py"
