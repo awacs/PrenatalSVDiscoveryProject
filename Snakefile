@@ -4,6 +4,7 @@ configfile: 'config.yaml'
 include: 'rules/pesr_preprocessing.rules'
 include: 'rules/depth_preprocessing.rules'
 include: 'rules/depth_integration.rules'
+include: 'rules/pesr_integration.rules'
 
 PESR_SOURCES = config['pesr_sources']
 DEPTH_SOURCES = config['depth_sources']
@@ -25,6 +26,6 @@ wildcard_constraints:
 
 rule all:
     input:
-        expand('preprocessing/filtered_vcfs/{source}.{quad}.vcf.gz',
-               source=PESR_SOURCES, quad=QUADS),
+        expand('integration/vcfcluster/{source}/merged.vcf.gz',
+               source=PESR_SOURCES),
         expand('integration/svof/depth.{svtype}.svof', svtype=CNV),

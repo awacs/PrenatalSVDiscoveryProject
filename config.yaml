@@ -2,6 +2,7 @@ quads: ref/quads.test.list
 samples: ref/samples.test.list
 idmap: ref/519families_idmapping
 chroms: ref/chroms.test.list
+blacklist: /data/talkowski/rlc47/src/b37.lumpy.exclude.4-13.bed.gz
 
 pesr_sources:
     - delly

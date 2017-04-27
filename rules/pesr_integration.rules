@@ -5,32 +5,40 @@ Matthew Stone <mstone5@mgh.harvard.edu>
 Cluster SV called by PE/SR-based algorithms. 
 """
 
-configfile: 'config.yaml'
+SOURCES = config['pesr_sources']
 
-SOURCES = config['sources']
+with open(config['chroms']) as clist:
+    CHROMS = [c.strip() for c in clist.readlines()]
 
-# Test parameters
-with open(config['quadlist']) as qlist:
+with open(config['quads']) as qlist:
     QUADS = [q.strip() for q in qlist.readlines()]
 
-CHROMS = [str(x) for x in range(1, 23)] + 'X Y'.split()
+# rule all:
+#     input:
+#         svof='svof/DLMW.519.svof',
+#         clean='clean_splits.done'
+#     shell:
+#         "rm {input.clean}"
 
-localrules: all, clean_splits
-
-rule all:
+rule make_alg_vcf_list:
     input:
-        svof='svof/DLMW.519.svof',
-        clean='clean_splits.done'
-    shell:
-        "rm {input.clean}"
-
-rule vcfcluster:
-    """Cluster calls across samples and sources. Split by chromosome."""
-    input:
-        list='519.dlmw.vcflist'
+        expand('preprocessing/filtered_vcfs/{{source}}.{quad}.vcf.gz',
+               quad=QUADS),
     output:
-        vcf='vcfcluster/DLMW.519.{chrom}.vcf',
-        bed='clusterbeds/DLMW.519.{chrom}.bed'
+        'integration/vcfcluster/vcfs.{source}.list'
+    run:
+        with open(output[0], 'w') as fout:
+            for fname in sorted(input):
+                fout.write(fname + '\n')
+                
+
+rule vcfcluster_by_alg:
+    """Cluster calls from a single algorithm across samples."""
+    input:
+        'integration/vcfcluster/vcfs.{source}.list'
+    output:
+        vcf='integration/vcfcluster/{source}/merged.{chrom}.vcf',
+        #bed='clusterbeds/DLMW.519.{chrom}.bed'
     params:
         blacklist=config['blacklist'],
         svsize=0,
@@ -39,28 +47,24 @@ rule vcfcluster:
         frac=0.1
     shell:
         """
-        ~/code/svcf/scripts/vcfcluster \
-            -f {input.list} \
-            -o {output.vcf} \
+        vcfcluster {input} {output.vcf}\
+            -p {params.prefix} \
             -c {wildcards.chrom} \
             -d {params.dist} \
-            -p {params.prefix} \
-            -z {params.svsize} \
-            -x {params.blacklist} \
             -r {params.frac} \
-            --svtypes del,dup \
-            --cluster-bed {output.bed}
+            -z {params.svsize} \
+            -x {params.blacklist}
         """
 
-rule merge_vcf:
+rule merge_vcfs:
     """Merge chromosome VCFs"""
     input:
-        vcfs=expand('vcfcluster/DLMW.519.{chrom}.vcf', chrom=CHROMS)
+        vcfs=expand('integration/vcfcluster/{{source}}/merged.{chrom}.vcf', chrom=CHROMS)
     output:
-        vcf='vcfcluster/DLMW.519.vcf.gz',
-        index='vcfcluster/DLMW.519.vcf.gz.tbi'
+        vcf='integration/vcfcluster/{source}/merged.vcf.gz',
+        idx='integration/vcfcluster/{source}/merged.vcf.gz.tbi',
     params:
-        tmpdir='/scratch/miket/my520/tmp'
+        tmpdir='scratch/'
     shell:
         """
         tmpdir=$(mktemp -d -p {params.tmpdir});
