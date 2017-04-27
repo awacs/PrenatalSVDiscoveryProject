@@ -7,6 +7,7 @@ data/*
 logs/*
 preprocessing/*
 integration/*
+rdtest/*
 
 # Do track each module's scripts, Snakefiles, configurations, and READMEs
 !*/scripts/
@@ -15,3 +16,6 @@ integration/*
 !*/cluster.yaml
 !*/README.md
 
+# Ignore RdTest temp files
+batch1_p1
+pilot_p1
