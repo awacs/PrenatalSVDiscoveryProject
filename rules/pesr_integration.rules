@@ -72,6 +72,15 @@ rule merge_vcfs:
         tabix -p vcf {output.vcf}; 
         """
 
+rule make_rdtest_beds:
+    input:
+        'integration/vcfcluster/{source}/merged.{chrom}.vcf'
+    output:
+        'integration/rdtest_beds/{source}/merged.{chrom}.bed'
+    shell:
+        "./scripts/make_rdtest_bed.py {input} {output}"
+
+
 rule split_melt:
     input:
         'vcfcluster/DLMW.519.{chrom}.vcf'

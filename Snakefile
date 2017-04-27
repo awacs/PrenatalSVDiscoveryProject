@@ -26,6 +26,6 @@ wildcard_constraints:
 
 rule all:
     input:
-        expand('integration/vcfcluster/{source}/merged.vcf.gz',
-               source=PESR_SOURCES),
+        expand('integration/rdtest_beds/{source}/merged.{chrom}.bed',
+               source=PESR_SOURCES, chrom=CHROMS),
         expand('integration/svof/depth.{svtype}.svof', svtype=CNV),
