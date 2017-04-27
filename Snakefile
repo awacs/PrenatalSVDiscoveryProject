@@ -23,16 +23,12 @@ with open(config['chroms']) as clist:
     CHROMS = [c.strip() for c in clist.readlines()]
 
 wildcard_constraints:
-    source='(' + '|'.join(SOURCES) + ')',
+    source='(' + '|'.join(SOURCES) + '|depth' + ')',
     sample='(' + '|'.join(SAMPLES) + ')'
 
 rule all:
     input:
-        expand('rdtest/{source}/merged.{chrom}.bed.pk',
-               source=PESR_SOURCES, chrom=CHROMS),
-        expand('integration/rdtest_beds/{source}/merged.{chrom}.bed',
-               source=PESR_SOURCES, chrom=CHROMS),
-        expand('integration/rdtest_beds/depth/merged.{chrom}.bed',
-               chrom=CHROMS),
+        expand('rdtest/{source}/merged.rdtest_pass.{chrom}.list',
+               source=RDTEST_SOURCES, chrom=CHROMS),
 
 # TODO: add rules per submodule

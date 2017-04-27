@@ -6,9 +6,6 @@ SVTYPES = config['svtypes']
 with open(config['quads']) as qlist:
     QUADS = [q.strip() for q in qlist.readlines()]
 
-wildcard_constraints:
-    source='(' + '|'.join(SOURCES) + ')'
-
 rule standardize_vcf:
     input:
         'data/raw_vcfs/{source}/{source}.{quad}.vcf.gz'
