@@ -50,4 +50,9 @@ rule bca_integration:
         expand('integration/bca/merged_algs/merged.{chrom}.vcf', chrom=CHROMS),
     output:
         touch('logs/bca.done')
+
 # TODO: add rules per submodule
+rule clean:
+    shell:
+        "rm $(snakemake --summary | tail -n+2 | cut -f1)"
+        
