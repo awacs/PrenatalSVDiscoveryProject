@@ -9,6 +9,7 @@ Convert CNV records in clustered VCF to RdTest bed format.
 """
 
 import argparse
+import sys
 from collections import deque
 from pysam import VariantFile
 
@@ -18,7 +19,8 @@ def main():
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('vcf', help='Input VCF')
-    parser.add_argument('bed', help='Output BED', type=argparse.FileType('w'))
+    parser.add_argument('bed', help='Output BED', type=argparse.FileType('w'),
+                        default=sys.stdout, nargs='?')
     args = parser.parse_args()
 
     # Prep bed

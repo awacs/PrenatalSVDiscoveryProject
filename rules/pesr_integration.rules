@@ -13,13 +13,6 @@ with open(config['chroms']) as clist:
 with open(config['quads']) as qlist:
     QUADS = [q.strip() for q in qlist.readlines()]
 
-# rule all:
-#     input:
-#         svof='svof/DLMW.519.svof',
-#         clean='clean_splits.done'
-#     shell:
-#         "rm {input.clean}"
-
 rule make_alg_vcf_list:
     input:
         expand('preprocessing/filtered_vcfs/{{source}}.{quad}.vcf.gz',
@@ -82,37 +75,74 @@ rule make_pesr_rdtest_beds:
         "./scripts/make_pesr_rdtest_bed.py {input} {output}"
 
 
-rule split_melt:
+rule rdtest_filter_pesr:
     input:
-        'vcfcluster/DLMW.519.{chrom}.vcf'
+        vcf='integration/vcfcluster/{source}/merged.{chrom}.vcf',
+        list='rdtest/{source}/merged.rdtest_pass.{chrom}.list'
     output:
-        'svof/DLMW.519.{chrom}.svof'
-    params:
-        source_list='delly,lumpy,manta,wham'
-    shell:
-        "~/code/svcf/scripts/svcf-melt -s {params.source_list} {input} {output}"
-
-rule merge_melt:
-    input:
-        expand('svof/DLMW.519.{chrom}.svof', chrom=CHROMS)
-    output:
-        svof='svof/DLMW.519.svof'
-    params:
-        source_list='manta,wham'
+        cnv='integration/rdtest_filtered/{source}/merged.{chrom}.vcf.gz',
+        bca='integration/bca/{source}/merged.{chrom}.vcf.gz',
     shell:
         """
-        head -n1 {input[0]} > {output};
-        for f in {input}; do sed '1d' $f; done | sort -k1,1V -k2,2n >> {output}
+        fgrep -w -f {input.list} {input.vcf} \
+          | cat <(egrep -e "^#" {input.vcf}) - \
+          | vcf-sort -c \
+          | bgzip -c \
+          > {output.cnv};
+        fgrep -v -w -f {input.list} {input.vcf} | vcf-sort -c | bgzip -c > {output.bca};
+        tabix -p vcf {output.cnv};
+        tabix -p vcf {output.bca};
+        """
+       
+
+rule make_merged_vcf_list:
+    input:
+        expand('integration/{{group}}/{source}/merged.{{chrom}}.vcf.gz', 
+               source=SOURCES)
+    output:
+        'integration/vcflists/{group}.vcfs.{chrom}.list'
+    run:
+        with open(output[0], 'w') as fout:
+            for fname in sorted(input):
+                fout.write(fname + '\n')
+
+rule vcfcluster_filtered:
+    """Cluster calls from a single algorithm across samples."""
+    input:
+        'integration/vcflists/{group}.vcfs.{chrom}.list'
+    output:
+        vcf='integration/{group}/merged_algs/merged.{chrom}.vcf',
+        #bed='clusterbeds/DLMW.519.{chrom}.bed'
+    params:
+        blacklist=config['blacklist'],
+        svsize=0,
+        prefix='DLMW.519',
+        dist=300,
+        frac=0.1
+    shell:
+        """
+        vcfcluster {input} {output.vcf} \
+            -p {params.prefix} \
+            -r {wildcards.chrom} \
+            -d {params.dist} \
+            -f {params.frac} \
+            -z {params.svsize} \
+            -x {params.blacklist}
         """
 
-rule clean_splits:
+rule make_pesr_svof:
     input:
-        vcfs=expand('vcfcluster/DLMW.519.{chrom}.vcf', chrom=CHROMS),
-        svofs=expand('svof/DLMW.519.{chrom}.svof', chrom=CHROMS),
-        merged_vcf='vcfcluster/DLMW.519.vcf.gz',
-        merged_svof='svof/DLMW.519.svof'
+        'integration/rdtest_filtered/merged_algs/merged.{chrom}.vcf',
     output:
-        touch('clean_splits.done')
+        'integration/rdtest_filtered/pesr/merged.{chrom}.svof'
     shell:
-        #"rm {input.vcfs} {input.svofs}"
-        "echo clean"
+        """
+        ./scripts/make_pesr_rdtest_bed.py {input} \
+          | sed -e '1d' \
+          | awk -v OFS="\\t" '{{split($5, samples, ",");
+                                for (i=1; i<=length(samples); i++) {{
+                                  print $1, $2, $3, $1, $4, $6, samples[i];
+                                }} }}' \
+          | cat <(echo "#chrA start end chrB name svtype sample" | sed -e 's/ /\\t/g') - \
+          > {output}
+        """

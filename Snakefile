@@ -32,7 +32,9 @@ wildcard_constraints:
 rule all:
     input:
         expand('integration/rdtest_filtered/depth/merged.{chrom}.svof', chrom=CHROMS),
-        expand('rdtest/{source}/merged.rdtest_pass.{chrom}.list',
-               source=RDTEST_SOURCES, chrom=CHROMS),
+        expand('integration/rdtest_filtered/pesr/merged.{chrom}.svof', chrom=CHROMS),
+        expand('integration/bca/merged_algs/merged.{chrom}.vcf', chrom=CHROMS),
+#         expand('rdtest/{source}/merged.rdtest_pass.{chrom}.list',
+#                source=RDTEST_SOURCES, chrom=CHROMS),
 
 # TODO: add rules per submodule
