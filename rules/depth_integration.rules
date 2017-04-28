@@ -81,7 +81,7 @@ rule make_depth_rdtest_bed:
     input:
         svof='integration/depth/bedcluster/merged.{chrom}.svof'
     output:
-        'integration/depth/rdtest_beds/merged.{chrom}.bed'
+        'integration/rdtest_beds/depth/merged.{chrom}.bed'
     script:
         "scripts/make_depth_rdtest_beds.py"
 

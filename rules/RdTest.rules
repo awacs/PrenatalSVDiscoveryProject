@@ -1,7 +1,7 @@
 
 rule RdTest:
     input:
-        bed='integration/{source}/rdtest_beds/merged.{chrom}.bed',
+        bed='integration/rdtest_beds/{source}/merged.{chrom}.bed',
     output:
         pk='rdtest/{source}/merged.{chrom}.bed.pk',
         zrank='rdtest/{source}/merged.{chrom}.bed_HomPowerPZRank.txt',

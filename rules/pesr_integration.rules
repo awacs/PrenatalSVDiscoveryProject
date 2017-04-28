@@ -18,7 +18,7 @@ rule make_alg_vcf_list:
         expand('preprocessing/filtered_vcfs/{{source}}.{quad}.vcf.gz',
                quad=QUADS),
     output:
-        'integration/vcflists/vcfs.{source}.list'
+        'integration/pesr/vcflists/vcfs.{source}.list'
     run:
         with open(output[0], 'w') as fout:
             for fname in sorted(input):
@@ -28,9 +28,9 @@ rule make_alg_vcf_list:
 rule vcfcluster_by_alg:
     """Cluster calls from a single algorithm across samples."""
     input:
-        'integration/vcflists/vcfs.{source}.list'
+        'integration/pesr/vcflists/vcfs.{source}.list'
     output:
-        vcf='integration/vcfcluster/{source}/merged.{chrom}.vcf',
+        vcf='integration/pesr/vcfcluster/{source}/merged.{chrom}.vcf',
         #bed='clusterbeds/DLMW.519.{chrom}.bed'
     params:
         blacklist=config['blacklist'],
@@ -53,10 +53,10 @@ rule vcfcluster_by_alg:
 rule merge_vcfs:
     """Merge chromosome VCFs"""
     input:
-        vcfs=expand('integration/vcfcluster/{{source}}/merged.{chrom}.vcf', chrom=CHROMS)
+        vcfs=expand('integration/pesr/vcfcluster/{{source}}/merged.{chrom}.vcf', chrom=CHROMS)
     output:
-        vcf='integration/vcfcluster/{source}/merged.vcf.gz',
-        idx='integration/vcfcluster/{source}/merged.vcf.gz.tbi',
+        vcf='integration/pesr/vcfcluster/{source}/merged.vcf.gz',
+        idx='integration/pesr/vcfcluster/{source}/merged.vcf.gz.tbi',
     params:
         tmpdir='scratch/'
     shell:
@@ -68,7 +68,7 @@ rule merge_vcfs:
 
 rule make_pesr_rdtest_beds:
     input:
-        'integration/vcfcluster/{source}/merged.{chrom}.vcf'
+        'integration/pesr/vcfcluster/{source}/merged.{chrom}.vcf'
     output:
         'integration/rdtest_beds/{source}/merged.{chrom}.bed'
     shell:
@@ -77,11 +77,12 @@ rule make_pesr_rdtest_beds:
 
 rule rdtest_filter_pesr:
     input:
-        vcf='integration/vcfcluster/{source}/merged.{chrom}.vcf',
+        vcf='integration/pesr/vcfcluster/{source}/merged.{chrom}.vcf',
         list='rdtest/{source}/merged.rdtest_pass.{chrom}.list'
     output:
-        cnv='integration/rdtest_filtered/{source}/merged.{chrom}.vcf.gz',
-        bca='integration/bca/{source}/merged.{chrom}.vcf.gz',
+        cnv='integration/pesr/rdtest_filtered/cnv/{source}/merged.{chrom}.vcf.gz',
+        bca='integration/pesr/rdtest_filtered/bca/{source}/merged.{chrom}.vcf.gz',
+        fail='integration/pesr/rdtest_filtered/fail/{source}/merged.{chrom}.vcf.gz',
     shell:
         """
         fgrep -w -f {input.list} {input.vcf} \
@@ -89,9 +90,13 @@ rule rdtest_filter_pesr:
           | vcf-sort -c \
           | bgzip -c \
           > {output.cnv};
-        fgrep -v -w -f {input.list} {input.vcf} | vcf-sort -c | bgzip -c > {output.bca};
-        tabix -p vcf {output.cnv};
-        tabix -p vcf {output.bca};
+        fgrep -v -w -f {input.list} {input.vcf} \
+          | fgrep -e "SVTYPE=DEL" -e "SVTYPE=DUP" \
+          | cat <(egrep -e "^#" {input.vcf}) - \
+          | vcf-sort -c \
+          | bgzip -c \
+          > {output.bca};
+        for f in {output}; do tabix -p vcf $f; done
         """
        
 
