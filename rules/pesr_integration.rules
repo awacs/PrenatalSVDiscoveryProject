@@ -47,11 +47,12 @@ rule vcfcluster_by_alg:
         frac=0.1
     shell:
         """
-        vcfcluster {input} {output.vcf}\
+        vcfcluster {input} {output.vcf} \
+            --single-source \
             -p {params.prefix} \
-            -c {wildcards.chrom} \
+            -r {wildcards.chrom} \
             -d {params.dist} \
-            -r {params.frac} \
+            -f {params.frac} \
             -z {params.svsize} \
             -x {params.blacklist}
         """
