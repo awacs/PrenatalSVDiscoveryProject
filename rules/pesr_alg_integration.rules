@@ -5,6 +5,8 @@ Matthew Stone <mstone5@mgh.harvard.edu>
 Cluster SV called by PE/SR-based algorithms. 
 """
 
+module_config = config['pesr_alg_integration']
+
 SOURCES = config['pesr_sources']
 
 with open(config['chroms']) as clist:
@@ -23,40 +25,35 @@ rule make_alg_vcf_list:
         with open(output[0], 'w') as fout:
             for fname in sorted(input):
                 fout.write(fname + '\n')
-                
 
 rule vcfcluster_by_alg:
     """Cluster calls from a single algorithm across samples."""
     input:
         'integration/vcflists/vcfs.{source}.list'
     output:
-        vcf='integration/vcfcluster/{source}/merged.{chrom}.vcf',
-        #bed='clusterbeds/DLMW.519.{chrom}.bed'
+        vcf='integration/vcfcluster/{source}/cohort.{chrom}.vcf',
     params:
-        blacklist=config['blacklist'],
-        svsize=0,
-        prefix='DLMW.519',
-        dist=300,
-        frac=0.1
+        **module_config['vcfcluster'],
+        prefix=lambda wildcards: 'cohort.{0}'.format(wildcards.source)
     shell:
         """
         vcfcluster {input} {output.vcf} \
             --single-source \
-            -p {params.prefix} \
             -r {wildcards.chrom} \
-            -d {params.dist} \
-            -f {params.frac} \
-            -z {params.svsize} \
+            -p {params.prefix} \
+            -d {params.min_dist} \
+            -f {params.min_recip_frac} \
+            -z {params.min_svsize} \
             -x {params.blacklist}
         """
 
-rule merge_vcfs:
+rule merge_alg_vcfs:
     """Merge chromosome VCFs"""
     input:
-        vcfs=expand('integration/vcfcluster/{{source}}/merged.{chrom}.vcf', chrom=CHROMS)
+        vcfs=expand('integration/vcfcluster/{{source}}/cohort.{chrom}.vcf', chrom=CHROMS)
     output:
-        vcf='integration/vcfcluster/{source}/merged.vcf.gz',
-        idx='integration/vcfcluster/{source}/merged.vcf.gz.tbi',
+        vcf='integration/vcfcluster/{source}/cohort.vcf.gz',
+        idx='integration/vcfcluster/{source}/cohort.vcf.gz.tbi',
     params:
         tmpdir='scratch/'
     shell:
@@ -68,81 +65,8 @@ rule merge_vcfs:
 
 rule make_pesr_rdtest_beds:
     input:
-        'integration/vcfcluster/{source}/merged.{chrom}.vcf'
+        'integration/vcfcluster/{source}/cohort.{chrom}.vcf'
     output:
-        'integration/rdtest_beds/{source}/merged.{chrom}.bed'
+        'integration/rdtest_beds/{source}/cohort.{chrom}.bed'
     shell:
         "./scripts/make_pesr_rdtest_bed.py {input} {output}"
-
-
-rule rdtest_filter_pesr:
-    input:
-        vcf='integration/vcfcluster/{source}/merged.{chrom}.vcf',
-        list='rdtest/{source}/merged.rdtest_pass.{chrom}.list'
-    output:
-        cnv='integration/rdtest_filtered/{source}/merged.{chrom}.vcf.gz',
-        bca='integration/bca/{source}/merged.{chrom}.vcf.gz',
-    shell:
-        """
-        fgrep -w -f {input.list} {input.vcf} \
-          | cat <(egrep -e "^#" {input.vcf}) - \
-          | vcf-sort -c \
-          | bgzip -c \
-          > {output.cnv};
-        fgrep -v -w -f {input.list} {input.vcf} | vcf-sort -c | bgzip -c > {output.bca};
-        tabix -p vcf {output.cnv};
-        tabix -p vcf {output.bca};
-        """
-       
-
-rule make_merged_vcf_list:
-    input:
-        expand('integration/{{group}}/{source}/merged.{{chrom}}.vcf.gz', 
-               source=SOURCES)
-    output:
-        'integration/vcflists/{group}.vcfs.{chrom}.list'
-    run:
-        with open(output[0], 'w') as fout:
-            for fname in sorted(input):
-                fout.write(fname + '\n')
-
-rule vcfcluster_filtered:
-    """Cluster calls from a single algorithm across samples."""
-    input:
-        'integration/vcflists/{group}.vcfs.{chrom}.list'
-    output:
-        vcf='integration/{group}/merged_algs/merged.{chrom}.vcf',
-        #bed='clusterbeds/DLMW.519.{chrom}.bed'
-    params:
-        blacklist=config['blacklist'],
-        svsize=0,
-        prefix='DLMW.519',
-        dist=300,
-        frac=0.1
-    shell:
-        """
-        vcfcluster {input} {output.vcf} \
-            -p {params.prefix} \
-            -r {wildcards.chrom} \
-            -d {params.dist} \
-            -f {params.frac} \
-            -z {params.svsize} \
-            -x {params.blacklist}
-        """
-
-rule make_pesr_svof:
-    input:
-        'integration/rdtest_filtered/merged_algs/merged.{chrom}.vcf',
-    output:
-        'integration/rdtest_filtered/pesr/merged.{chrom}.svof'
-    shell:
-        """
-        ./scripts/make_pesr_rdtest_bed.py {input} \
-          | sed -e '1d' \
-          | awk -v OFS="\\t" '{{split($5, samples, ",");
-                                for (i=1; i<=length(samples); i++) {{
-                                  print $1, $2, $3, $1, $4, $6, samples[i];
-                                }} }}' \
-          | cat <(echo "#chrA start end chrB name svtype sample" | sed -e 's/ /\\t/g') - \
-          > {output}
-        """

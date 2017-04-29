@@ -116,8 +116,8 @@ rule concat_merged_depth_calls:
     input:
         expand('preprocessing/std_beds/merged_algs/{sample}.{{svtype}}.cov.bed', sample=SAMPLES)
     output:
-        bed='preprocessing/std_beds/{ALL_SAMPLES}.{svtype}.bed.gz',
-        idx='preprocessing/std_beds/{ALL_SAMPLES}.{svtype}.bed.gz.tbi',
+        bed='preprocessing/std_beds/cohort.{svtype}.bed.gz',
+        idx='preprocessing/std_beds/cohort.{svtype}.bed.gz.tbi',
     shell:
         """
         cat {input} \
