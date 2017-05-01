@@ -54,7 +54,7 @@ rule bedcluster:
         intersect_bed='integration/depth/intersection/cohort.{svtype}.{chrom}.bed.gz',
         variant_list='integration/depth/variant_lists/cohort.{svtype}.{chrom}.list'
     output:
-        'integration/depth/bedcluster/cohort_split.{svtype}.{chrom}.svof'
+        'integration/depth/bedcluster/cohort_split.{svtype}.{chrom}.bed'
     params:
         prefix=variant_prefix
     shell:
@@ -64,13 +64,13 @@ rule bedcluster:
           > {output}
         """
 
-# Merge split svofs
+# Merge split bed
 rule merge_across_svtypes:
     input:
-        expand('integration/depth/bedcluster/cohort_split.{svtype}.{{chrom}}.svof',
+        expand('integration/depth/bedcluster/cohort_split.{svtype}.{{chrom}}.bed',
                svtype=CNV)
     output:
-        'integration/depth/bedcluster/cohort.{chrom}.svof'
+        'integration/depth/bedcluster/cohort.{chrom}.bed'
     shell:
         """
         head -n1 {input[0]} > {output};
@@ -79,7 +79,7 @@ rule merge_across_svtypes:
 
 rule make_depth_rdtest_bed:
     input:
-        svof='integration/depth/bedcluster/cohort.{chrom}.svof'
+        bed='integration/depth/bedcluster/cohort.{chrom}.bed'
     output:
         'integration/depth/rdtest_beds/cohort.{chrom}.bed'
     script:
@@ -87,13 +87,13 @@ rule make_depth_rdtest_bed:
 
 rule rdtest_filter_depth:
     input:
-        svof='integration/depth/bedcluster/cohort.{chrom}.svof',
+        bed='integration/depth/bedcluster/cohort.{chrom}.bed',
         list='rdtest/depth/cohort.rdtest_pass.{chrom}.list'
     output:
-        svof='integration/depth/rdtest_filtered/cohort.{chrom}.svof'
+        bed='integration/depth/rdtest_filtered/cohort.{chrom}.bed'
     shell:
         """
-        fgrep -w -f {input.list} {input.svof} \
-          | cat <(head -n1 {input.svof}) - \
+        fgrep -w -f {input.list} {input.bed} \
+          | cat <(head -n1 {input.bed}) - \
           > {output}
         """

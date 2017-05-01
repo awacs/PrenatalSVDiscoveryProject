@@ -12,7 +12,7 @@ import pandas as pd
 
 
 def make_depth_rdtest_bed(svof):
-    bed = svof['#chrA start end name svtype'.split()].drop_duplicates()
+    bed = svof['#chrom start end name svtype'.split()].drop_duplicates()
 
     # Add samples
     def agg_samples(samples):
@@ -22,8 +22,6 @@ def make_depth_rdtest_bed(svof):
     bed = pd.merge(bed, samples, on='name', how='left')
 
     # Format
-    rename = {'#chrA': '#chrom'}
-    bed = bed.rename(columns=rename)
     bed['svtype'] = bed.svtype.str.upper()
 
     cols = '#chrom start end name samples svtype'.split()
@@ -33,9 +31,9 @@ def main():
     #  dels = pd.read_table(snakemake.input.dels)
     #  dups = pd.read_table(snakemake.input.dups)
     #  svof = pd.concat([dels, dups]).sort_values('start')
-    svof = pd.read_table(snakemake.input.svof)
+    clustered = pd.read_table(snakemake.input.bed)
 
-    bed = make_depth_rdtest_bed(svof)
+    bed = make_depth_rdtest_bed(clustered)
 
     bed.to_csv(snakemake.output[0], sep='\t', index=False)
 

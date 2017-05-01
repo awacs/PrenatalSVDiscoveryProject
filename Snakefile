@@ -34,8 +34,8 @@ print(CHROMS)
 
 rule all:
     input:
-        expand('integration/depth/rdtest_filtered/cohort.{chrom}.svof', chrom=CHROMS),
-        expand('integration/pesr/rdtest_filtered/cohort.{chrom}.svof', chrom=CHROMS),
+        expand('integration/depth/rdtest_filtered/cohort.{chrom}.bed', chrom=CHROMS),
+        expand('integration/pesr/rdtest_filtered/cohort.{chrom}.bed', chrom=CHROMS),
         expand('integration/pesr/bca/cohort.{chrom}.vcf', chrom=CHROMS),
 
 # TODO: add rules per submodule

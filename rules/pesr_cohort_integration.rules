@@ -70,15 +70,15 @@ rule make_pesr_svof:
     input:
         'integration/pesr/rdtest_filtered/cohort.{chrom}.vcf',
     output:
-        'integration/pesr/rdtest_filtered/cohort.{chrom}.svof'
+        'integration/pesr/rdtest_filtered/cohort.{chrom}.bed'
     shell:
         """
         ./scripts/make_pesr_rdtest_bed.py {input} \
           | sed -e '1d' \
           | awk -v OFS="\\t" '{{split($5, samples, ",");
                                 for (i=1; i<=length(samples); i++) {{
-                                  print $1, $2, $3, $1, $4, $6, samples[i];
+                                  print $1, $2, $3, $4, $6, samples[i];
                                 }} }}' \
-          | cat <(echo "#chrA start end chrB name svtype sample" | sed -e 's/ /\\t/g') - \
+          | cat <(echo "#chrom start end name svtype sample" | sed -e 's/ /\\t/g') - \
           > {output}
         """
