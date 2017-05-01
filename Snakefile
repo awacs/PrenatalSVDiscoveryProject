@@ -31,25 +31,9 @@ wildcard_constraints:
 
 rule all:
     input:
-        'logs/cnv_depth.done', 'logs/cnv_pesr.done', 'logs/bca.done'
-
-rule cnv_pesr_integration:
-    input:
-        expand('integration/rdtest_filtered/pesr/merged.{chrom}.svof', chrom=CHROMS),
-    output:
-        touch('logs/cnv_pesr.done')
-
-rule cnv_depth_integration:
-    input:
+        # expand('integration/rdtest_filtered/pesr/merged.{chrom}.svof', chrom=CHROMS),
         expand('integration/rdtest_filtered/depth/merged.{chrom}.svof', chrom=CHROMS),
-    output:
-        touch('logs/cnv_depth.done')
-
-rule bca_integration:
-    input:
-        expand('integration/bca/merged_algs/merged.{chrom}.vcf', chrom=CHROMS),
-    output:
-        touch('logs/bca.done')
+        # expand('integration/bca/merged_algs/merged.{chrom}.vcf', chrom=CHROMS),
 
 # TODO: add rules per submodule
 rule clean:

@@ -116,13 +116,13 @@ rule concat_merged_depth_calls:
     input:
         expand('preprocessing/std_beds/merged_algs/{sample}.{{svtype}}.cov.bed', sample=SAMPLES)
     output:
-        bed='preprocessing/std_beds/merged.{svtype}.bed.gz',
-        idx='preprocessing/std_beds/merged.{svtype}.bed.gz.tbi',
+        bed='preprocessing/std_beds/cohort.{svtype}.bed.gz',
+        idx='preprocessing/std_beds/cohort.{svtype}.bed.gz.tbi',
     shell:
         """
         cat {input} \
           | sort -k1,1V -k2,2n \
-          | awk -v OFS="\\t" '{{$3=$3"\tmerged_{wildcards.svtype}_"NR; $5="{wildcards.svtype}"; print}}' \
+          | awk -v OFS="\\t" '{{$3=$3"\tcohort_{wildcards.svtype}_"NR; $5="{wildcards.svtype}"; print}}' \
           | cat <(echo -e "#chr\\tstart\\tend\\tname\\tsample\\tsvtype\\tcnmops\\tcnvnator\\tgenomestrip") - \
           | bgzip -c \
           > {output.bed};

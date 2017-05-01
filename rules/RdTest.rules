@@ -1,7 +1,13 @@
 
+def rdtest_bed(wildcards):
+    if wildcards.source == 'depth':
+        return 'integration/depth/rdtest_beds/cohort.{chrom}.bed'
+    else:
+        return 'integration/pesr/rdtest_beds/{source}/merged.{{chrom}}.bed'.format(wildcards.source)
+
 rule RdTest:
     input:
-        bed='integration/rdtest_beds/{source}/merged.{chrom}.bed',
+        bed=rdtest_bed
     output:
         pk='rdtest/{source}/merged.{chrom}.bed.pk',
         zrank='rdtest/{source}/merged.{chrom}.bed_HomPowerPZRank.txt',
