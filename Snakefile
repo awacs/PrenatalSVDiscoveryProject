@@ -4,7 +4,8 @@ configfile: 'config.yaml'
 include: 'rules/pesr_preprocessing.rules'
 include: 'rules/depth_preprocessing.rules'
 include: 'rules/depth_integration.rules'
-include: 'rules/pesr_integration.rules'
+include: 'rules/pesr_alg_integration.rules'
+include: 'rules/pesr_cohort_integration.rules'
 include: 'rules/RdTest.rules'
 
 PESR_SOURCES = config['pesr_sources']
@@ -31,9 +32,9 @@ wildcard_constraints:
 
 rule all:
     input:
-        # expand('integration/rdtest_filtered/pesr/merged.{chrom}.svof', chrom=CHROMS),
-        expand('integration/rdtest_filtered/depth/merged.{chrom}.svof', chrom=CHROMS),
-        # expand('integration/bca/merged_algs/merged.{chrom}.vcf', chrom=CHROMS),
+        expand('integration/rdtest_filtered/pesr/cohort.{chrom}.svof', chrom=CHROMS),
+        expand('integration/rdtest_filtered/depth/cohort.{chrom}.svof', chrom=CHROMS),
+        expand('integration/bca/merged_algs/cohort.{chrom}.vcf', chrom=CHROMS),
 
 # TODO: add rules per submodule
 rule clean:

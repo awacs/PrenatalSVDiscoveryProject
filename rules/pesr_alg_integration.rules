@@ -1,0 +1,71 @@
+"""
+pesr.snake
+Matthew Stone <mstone5@mgh.harvard.edu>
+
+Cluster SV called by PE/SR-based algorithms. 
+"""
+
+module_config = config['pesr_alg_integration']
+
+SOURCES = config['pesr_sources']
+
+with open(config['chroms']) as clist:
+    CHROMS = [c.strip() for c in clist.readlines()]
+
+with open(config['quads']) as qlist:
+    QUADS = [q.strip() for q in qlist.readlines()]
+
+rule make_alg_vcf_list:
+    input:
+        expand('preprocessing/filtered_vcfs/{{source}}.{quad}.vcf.gz',
+               quad=QUADS),
+    output:
+        'integration/vcflists/vcfs.{source}.list'
+    run:
+        with open(output[0], 'w') as fout:
+            for fname in sorted(input):
+                fout.write(fname + '\n')
+
+rule vcfcluster_by_alg:
+    """Cluster calls from a single algorithm across samples."""
+    input:
+        'integration/vcflists/vcfs.{source}.list'
+    output:
+        vcf='integration/vcfcluster/{source}/cohort.{chrom}.vcf',
+    params:
+        **module_config['vcfcluster'],
+        prefix=lambda wildcards: 'cohort.{0}'.format(wildcards.source)
+    shell:
+        """
+        vcfcluster {input} {output.vcf} \
+            -r {wildcards.chrom} \
+            -p {params.prefix} \
+            -d {params.min_dist} \
+            -f {params.min_recip_frac} \
+            -z {params.min_svsize} \
+            -x {params.blacklist}
+        """
+
+rule merge_alg_vcfs:
+    """Merge chromosome VCFs"""
+    input:
+        vcfs=expand('integration/vcfcluster/{{source}}/cohort.{chrom}.vcf', chrom=CHROMS)
+    output:
+        vcf='integration/vcfcluster/{source}/cohort.vcf.gz',
+        idx='integration/vcfcluster/{source}/cohort.vcf.gz.tbi',
+    params:
+        tmpdir='scratch/'
+    shell:
+        """
+        tmpdir=$(mktemp -d -p {params.tmpdir});
+        vcf-concat {input.vcfs} | vcf-sort -c -t $tmpdir | bgzip -c > {output.vcf}; 
+        tabix -p vcf {output.vcf}; 
+        """
+
+rule make_pesr_rdtest_beds:
+    input:
+        'integration/vcfcluster/{source}/cohort.{chrom}.vcf'
+    output:
+        'integration/rdtest_beds/{source}/cohort.{chrom}.bed'
+    shell:
+        "./scripts/make_pesr_rdtest_bed.py {input} {output}"

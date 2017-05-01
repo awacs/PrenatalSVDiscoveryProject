@@ -2,9 +2,10 @@ quads: ref/quads.test.list
 samples: ref/samples.test.list
 idmap: ref/519families_idmapping
 chroms: ref/chroms.test.list
-blacklist: /data/talkowski/rlc47/src/b37.lumpy.exclude.4-13.bed.gz
-gt_script: /data/talkowski/Samples/SFARI/GenotypeCNV/RdTest.R
-bincov: /data/talkowski/Samples/SFARI/deep_sv/asc_540/bincov/matrices/ASC540.all.binCov.raw.bed
+
+blacklist: ref/b37.lumpy.exclude.4-13.bed.gz
+
+ALL_SAMPLES: 'merged'
 
 pesr_sources:
     - delly
@@ -25,3 +26,22 @@ svtypes:
 cnv_types:
     - DEL
     - DUP
+
+pesr_alg_integration:
+    vcfcluster:
+        min_recip_frac: 0.1
+        min_dist: 300
+        min_svsize: 0
+        blacklist: ref/b37.lumpy.exclude.4-13.bed.gz
+
+pesr_cohort_integration:
+    vcfcluster:
+        min_recip_frac: 0.1
+        min_dist: 300
+        min_svsize: 0
+        blacklist: ref/b37.lumpy.exclude.4-13.bed.gz
+
+    
+RdTest:
+    gt_script: /data/talkowski/Samples/SFARI/GenotypeCNV/RdTest.R
+    bincov: /data/talkowski/Samples/SFARI/deep_sv/asc_540/bincov/matrices/ASC540.all.binCov.raw.bed

@@ -1,4 +1,6 @@
 
+module_config = config['RdTest']
+
 def rdtest_bed(wildcards):
     if wildcards.source == 'depth':
         return 'integration/depth/rdtest_beds/cohort.{chrom}.bed'
@@ -9,24 +11,25 @@ rule RdTest:
     input:
         bed=rdtest_bed
     output:
-        pk='rdtest/{source}/merged.{chrom}.bed.pk',
-        zrank='rdtest/{source}/merged.{chrom}.bed_HomPowerPZRank.txt',
+        pk='rdtest/{source}/cohort.{chrom}.bed.pk',
+        zrank='rdtest/{source}/cohort.{chrom}.bed_HomPowerPZRank.txt',
     shell:
         """
         cp {input.bed} {output.pk};
         cp {input.bed} {output.zrank};
         """
         # """
-        # Rscript {config[gt_script]} -b {input.bed} -c {config[bincov]} \
-        #   -o merged.{wildcards.chrom}.bed -v TRUE -g NULL \
+        # Rscript {module_config[gt_script]} -b {input.bed} \
+        #   -c {module_config[bincov]} \
+        #   -o cohort.{wildcards.chrom}.bed -v TRUE -g NULL \
         #   -j rdtest/{wildcards.source}/ > /dev/null;
         # """
 
 rule rdtest_filter:
     input:
-        zrank='rdtest/{source}/merged.{chrom}.bed_HomPowerPZRank.txt',
+        zrank='rdtest/{source}/cohort.{chrom}.bed_HomPowerPZRank.txt',
     output:
-        'rdtest/{source}/merged.rdtest_pass.{chrom}.list'
+        'rdtest/{source}/cohort.rdtest_pass.{chrom}.list'
     shell:
         """
         sed '1d' {input} | cut -f4 > {output}
