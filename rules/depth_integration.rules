@@ -90,7 +90,7 @@ rule rdtest_filter_depth:
         svof='integration/depth/bedcluster/cohort.{chrom}.svof',
         list='rdtest/depth/cohort.rdtest_pass.{chrom}.list'
     output:
-        svof='integration/rdtest_filtered/depth/cohort.{chrom}.svof'
+        svof='integration/depth/rdtest_filtered/cohort.{chrom}.svof'
     shell:
         """
         fgrep -w -f {input.list} {input.svof} \

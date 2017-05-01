@@ -20,7 +20,7 @@ rule make_alg_vcf_list:
         expand('preprocessing/filtered_vcfs/{{source}}.{quad}.vcf.gz',
                quad=QUADS),
     output:
-        'integration/vcflists/vcfs.{source}.list'
+        'integration/pesr/vcflists/vcfs.{source}.list'
     run:
         with open(output[0], 'w') as fout:
             for fname in sorted(input):
@@ -29,9 +29,9 @@ rule make_alg_vcf_list:
 rule vcfcluster_by_alg:
     """Cluster calls from a single algorithm across samples."""
     input:
-        'integration/vcflists/vcfs.{source}.list'
+        'integration/pesr/vcflists/vcfs.{source}.list'
     output:
-        vcf='integration/vcfcluster/{source}/cohort.{chrom}.vcf',
+        vcf='integration/pesr/vcfcluster/{source}/cohort.{chrom}.vcf',
     params:
         **module_config['vcfcluster'],
         prefix=lambda wildcards: 'cohort.{0}'.format(wildcards.source)
@@ -46,26 +46,26 @@ rule vcfcluster_by_alg:
             -x {params.blacklist}
         """
 
-rule merge_alg_vcfs:
-    """Merge chromosome VCFs"""
-    input:
-        vcfs=expand('integration/vcfcluster/{{source}}/cohort.{chrom}.vcf', chrom=CHROMS)
-    output:
-        vcf='integration/vcfcluster/{source}/cohort.vcf.gz',
-        idx='integration/vcfcluster/{source}/cohort.vcf.gz.tbi',
-    params:
-        tmpdir='scratch/'
-    shell:
-        """
-        tmpdir=$(mktemp -d -p {params.tmpdir});
-        vcf-concat {input.vcfs} | vcf-sort -c -t $tmpdir | bgzip -c > {output.vcf}; 
-        tabix -p vcf {output.vcf}; 
-        """
+# rule merge_alg_vcfs:
+#     """Merge chromosome VCFs"""
+#     input:
+#         vcfs=expand('integration/pesr/vcfcluster/{{source}}/cohort.{chrom}.vcf', chrom=CHROMS)
+#     output:
+#         vcf='integration/pesr/vcfcluster/{source}/cohort.vcf.gz',
+#         idx='integration/pesr/vcfcluster/{source}/cohort.vcf.gz.tbi',
+#     params:
+#         tmpdir='scratch/'
+#     shell:
+#         """
+#         tmpdir=$(mktemp -d -p {params.tmpdir});
+#         vcf-concat {input.vcfs} | vcf-sort -c -t $tmpdir | bgzip -c > {output.vcf}; 
+#         tabix -p vcf {output.vcf}; 
+#         """
 
 rule make_pesr_rdtest_beds:
     input:
-        'integration/vcfcluster/{source}/cohort.{chrom}.vcf'
+        'integration/pesr/vcfcluster/{source}/cohort.{chrom}.vcf'
     output:
-        'integration/rdtest_beds/{source}/cohort.{chrom}.bed'
+        'integration/pesr/rdtest_beds/{source}/cohort.{chrom}.bed'
     shell:
         "./scripts/make_pesr_rdtest_bed.py {input} {output}"

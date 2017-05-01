@@ -3,9 +3,10 @@ module_config = config['RdTest']
 
 def rdtest_bed(wildcards):
     if wildcards.source == 'depth':
-        return 'integration/depth/rdtest_beds/cohort.{chrom}.bed'
+        path = 'integration/depth/rdtest_beds/cohort.{chrom}.bed'
     else:
-        return 'integration/pesr/rdtest_beds/{source}/merged.{{chrom}}.bed'.format(wildcards.source)
+        path = 'integration/pesr/rdtest_beds/{source}/cohort.{chrom}.bed'
+    return path.format(**wildcards)
 
 rule RdTest:
     input:

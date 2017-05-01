@@ -17,11 +17,11 @@ with open(config['quads']) as qlist:
 
 rule rdtest_filter_pesr:
     input:
-        vcf='integration/vcfcluster/{source}/cohort.{chrom}.vcf',
+        vcf='integration/pesr/vcfcluster/{source}/cohort.{chrom}.vcf',
         list='rdtest/{source}/cohort.rdtest_pass.{chrom}.list'
     output:
-        cnv='integration/rdtest_filtered/{source}/cohort.{chrom}.vcf.gz',
-        bca='integration/bca/{source}/cohort.{chrom}.vcf.gz',
+        cnv='integration/pesr/rdtest_filtered/{source}/cohort.{chrom}.vcf.gz',
+        bca='integration/pesr/bca/{source}/cohort.{chrom}.vcf.gz',
     shell:
         """
         fgrep -w -f {input.list} {input.vcf} \
@@ -36,10 +36,10 @@ rule rdtest_filter_pesr:
 
 rule make_merged_vcf_list:
     input:
-        expand('integration/{{group}}/{source}/cohort.{{chrom}}.vcf.gz', 
+        expand('integration/pesr/{{group}}/{source}/cohort.{{chrom}}.vcf.gz', 
                source=SOURCES)
     output:
-        'integration/vcflists/{group}.vcfs.{chrom}.list'
+        'integration/pesr/vcflists/{group}.vcfs.{chrom}.list'
     run:
         with open(output[0], 'w') as fout:
             for fname in sorted(input):
@@ -48,9 +48,9 @@ rule make_merged_vcf_list:
 rule vcfcluster_filtered:
     """Cluster calls from a single algorithm across samples."""
     input:
-        'integration/vcflists/{group}.vcfs.{chrom}.list'
+        'integration/pesr/vcflists/{group}.vcfs.{chrom}.list'
     output:
-        vcf='integration/{group}/merged_algs/cohort.{chrom}.vcf',
+        vcf='integration/pesr/{group}/cohort.{chrom}.vcf',
         #bed='clusterbeds/DLMW.519.{chrom}.bed'
     params:
         **module_config['vcfcluster'],
@@ -68,9 +68,9 @@ rule vcfcluster_filtered:
 
 rule make_pesr_svof:
     input:
-        'integration/rdtest_filtered/merged_algs/cohort.{chrom}.vcf',
+        'integration/pesr/rdtest_filtered/cohort.{chrom}.vcf',
     output:
-        'integration/rdtest_filtered/pesr/cohort.{chrom}.svof'
+        'integration/pesr/rdtest_filtered/cohort.{chrom}.svof'
     shell:
         """
         ./scripts/make_pesr_rdtest_bed.py {input} \

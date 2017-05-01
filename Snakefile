@@ -30,11 +30,13 @@ wildcard_constraints:
     svtype='(' + '|'.join(SVTYPES) + ')',
     chrom='(' + '|'.join(CHROMS) + ')'
 
+print(CHROMS)
+
 rule all:
     input:
-        expand('integration/rdtest_filtered/pesr/cohort.{chrom}.svof', chrom=CHROMS),
-        expand('integration/rdtest_filtered/depth/cohort.{chrom}.svof', chrom=CHROMS),
-        expand('integration/bca/merged_algs/cohort.{chrom}.vcf', chrom=CHROMS),
+        expand('integration/depth/rdtest_filtered/cohort.{chrom}.svof', chrom=CHROMS),
+        expand('integration/pesr/rdtest_filtered/cohort.{chrom}.svof', chrom=CHROMS),
+        expand('integration/pesr/bca/cohort.{chrom}.vcf', chrom=CHROMS),
 
 # TODO: add rules per submodule
 rule clean:
