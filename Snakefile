@@ -36,14 +36,7 @@ print(CHROMS)
 rule all:
     input:
         'integration/pesr_depth/variants/cohort.22.bed.gz',
-        #'integration/pesr_depth/pesr_depth_links.22.txt',
-        #'integration/pesr_depth/signal_specific_variants/cohort.pesr_only.22.bed',
-        #'integration/pesr_depth/signal_specific_variants/cohort.pesr_depth.22.bed',
-        #expand('integration/pesr_depth/intersection/cohort.{chrom}.bed', chrom=CHROMS),
-        # expand('integration/pesr_depth/depth_only/cohort.{chrom}.bed', chrom=CHROMS),
-        # expand('integration/depth/rdtest_filtered/cohort.{chrom}.bed', chrom=CHROMS),
-        # expand('integration/pesr/rdtest_filtered/cohort.{chrom}.bed', chrom=CHROMS),
-        expand('integration/pesr/bca/cohort.{chrom}.vcf', chrom=CHROMS),
+        # expand('integration/pesr/bca/cohort.{chrom}.vcf', chrom=CHROMS),
 
 # TODO: add rules per submodule
 rule clean:
