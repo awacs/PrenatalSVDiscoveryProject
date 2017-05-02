@@ -4,6 +4,18 @@ Talkowski Lab structural variant detection pipeline. Documentation in progress.
 
 ## Dependencies
 
+### Python 3
+
+The pipeline requires Python 3. If you already have an established Python 3
+environment, you can ignore this subsection. Otherwise, the recommended way to
+create a Python 3 environment with the required packages is with
+[Anaconda](https://www.continuum.io/downloads).
+
+```
+$ conda create -n $environment -c bioconda python=3.5 numpy scipy pysam snakemake
+$ source activate $environment
+```
+
 ### SVtools
 The pipeline requires the `svtools` Python package, which is currently
 available only on github.
