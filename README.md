@@ -44,6 +44,10 @@ $ cd svtools
 $ pip install -e .
 ```
 
+### Bedtools
+The pipeline requires bedtools 2.26 or later. Earlier versions may throw an
+error when `bedtools merge` is passed an empty file.
+
 ## Installation and Usage
 As a `snakemake` workflow, the pipeline is intended to be cloned for each
 project, e.g.
