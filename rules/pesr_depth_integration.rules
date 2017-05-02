@@ -7,120 +7,135 @@ Pipeline for merging PE/SR and RD calls.
 Defaults to using coordinates of PE/SR calls when overlap exists.
 """
 
-configfile: 'config.yaml'
-
 with open(config['samples']) as slist:
-    SAMPLES = [l.strip() for l in slist.readlines()]
+    SAMPLES = [s.strip() for s in slist.readlines()]
 
-CHROMS = [str(x) for x in range(1, 23)] + 'X Y'.split()
+with open(config['chroms']) as clist:
+    CHROMS = [c.strip() for c in clist.readlines()]
+
 #CHROMS = [str(x) for x in range(1, 23)]
 SOURCES = ['pesr', 'rd']
 
-localrules: all, merge_bed
 
 # TODO: pull out {group}s, just run snake in one directory
 
-rule all:
-    input:
-        #expand('pesr_sect_rd/{sample}.pesr_sect_rd.{chrom}.bed',
-        expand('depth_only/{sample}.depth_only.bed', sample=SAMPLES)
-        #'pesr_rd/SFARI.519.MW_cnmops.bed'
+# rule all:
+#     input:
+#         #expand('pesr_sect_rd/{sample}.pesr_sect_rd.{chrom}.bed',
+#         expand('depth_only/{sample}.depth_only.bed', sample=SAMPLES)
+#         #'pesr_rd/SFARI.519.MW_cnmops.bed'
 
-rule intersect_pesr:
+rule pesr_depth_intersection:
     input:
-        pesr='pesr/svof/DLMW.519.svof',
-        rd='depth/svof/all.svof'
+        pesr='integration/pesr/rdtest_filtered/cohort.{chrom}.bed',
+        depth='integration/depth/rdtest_filtered/cohort.{chrom}.bed',
     output:
-        'pesr_sect_rd/{sample}.pesr_sect_rd.bed'
-    params:
-        job_name='intersect_pesr',
-        frac=0.8
-    shell:
-        """
-        ./scripts/intersect_pesr.sh {input.pesr} {input.rd} {wildcards.sample} {params.frac} {output}
-        """
-#        "bedtools intersect "
-#        "-a <(cut -f1-7 {input.pesr} | fgrep -e {wildcards.sample}) "
-#        "-b <(cut -f1-7 {input.rd} | fgrep -e {wildcards.sample}) "
-#        "-wa -wb -loj -r -f {params.frac} | awk '($6==$13 || $13==".")' > {output}"
-      
-# Grep out RD IDs not present in pesr overlap 
-# Handle PE/SR sites with multiple overlapping depth calls 
-rule depth_only:
-    input:
-        pesr_rd='pesr_sect_rd/{sample}.pesr_sect_rd.bed',
-        rd='depth/svof/all.svof'
-    output:
-        'depth_only/{sample}.depth_only.bed'
+        temp('integration/pesr_depth/intersection/{sample}.intersection.{chrom}.bed')
     params:
         frac=0.8
     shell:
         """
-        ./scripts/depth_only.sh {input.pesr_rd} {input.rd} {wildcards.sample} {output}
+        bedtools intersect -wa -wb -loj -r -f {params.frac} \
+            -a <(cut -f -6 {input.pesr} | fgrep -w -e {wildcards.sample}) \
+            -b <(cut -f -6 {input.depth} | fgrep -w -e {wildcards.sample}) \
+          | awk '($5==$11)' \
+          > {output}
         """
-
-rule merge:
+          
+rule combine_sample_pesr_depth_intersections:
     input:
-        expand('{{dirname}}/{sample}.{{dirname}}.bed', sample=SAMPLES)
+        expand('integration/pesr_depth/{{dirname}}/{sample}.{{dirname}}.{{chrom}}.bed',
+               sample=SAMPLES)
     output:
-        '{dirname}/all.{dirname}.bed'
+        'integration/pesr_depth/{dirname}/cohort.{chrom}.bed'
     shell:
         """
         cat {input} | sort -k1,1V -k2,2n > {output}
         """
 
-rule get_pairings:
+rule get_pesr_depth_links:
     input:
-        pesr='pesr_sect_rd/all.pesr_sect_rd.bed'
+        pesr_depth='integration/pesr_depth/intersection/cohort.{chrom}.bed',
     output:
-        'pesr_rd/pesr_depth_pairings.txt'
+        'integration/pesr_depth/pesr_depth_links.{chrom}.txt'
     shell:
         """
-        fgrep -e "depth" {input.pesr} \
-            | cut -f5,12 | uniq | sort | uniq > {output}
+        cut -f4,10 {input} | sort | uniq > {output}
         """
 
-rule get_signal_specific:
+rule get_signal_specific_calls:
     input:
-        pesr='pesr_sect_rd/all.pesr_sect_rd.bed',
-        depth='depth_only/all.depth_only.bed',
-        pairings='pesr_rd/pesr_depth_pairings.txt'
+        pesr='integration/pesr/rdtest_filtered/cohort.{chrom}.bed',
+        depth='integration/depth/rdtest_filtered/cohort.{chrom}.bed',
+        links='integration/pesr_depth/pesr_depth_links.{chrom}.txt'
     output:
-        'pesr_rd/pesr_only.bed',
-        'pesr_rd/depth_only.bed',
-        'pesr_rd/pesr_rd.pesr.bed',
-        'pesr_rd/pesr_rd.depth.bed',
+        pesr='integration/pesr_depth/signal_specific_calls/cohort.pesr_only.{chrom}.bed',
+        depth='integration/pesr_depth/signal_specific_calls/cohort.depth_only.{chrom}.bed',
     shell:
         """
-        ./scripts/get_signal_specific.sh;
-        ./scripts/get_pesr_and_rd.sh;
+        head -n1 {input.pesr} \
+          | awk -v OFS="\\t" '{{print $0, "pesr_name", "depth_name"}}' \
+          > {output.pesr};
+        head -n1 {input.pesr} \
+          | awk -v OFS="\\t" '{{print $0, "pesr_name", "depth_name"}}' \
+          > {output.depth};
+        cut -f1 {input.links} \
+          | sort -u \
+          | fgrep -w -v -f - {input.pesr} \
+          | sed '1d' \
+          | awk -v OFS="\\t" '{{print $1, $2, $3, $4, $5, $6, $4, "."}}' \
+          >> {output.pesr};
+        cut -f1 {input.links} \
+          | sort -u \
+          | fgrep -w -v -f - {input.depth} \
+          | sed '1d' \
+          | awk -v OFS="\\t" '{{print $1, $2, $3, $4, $5, $6, ".", $4}}' \
+          >> {output.depth};
         """
 
-rule merge_pesr_rd:
+rule get_signal_specific_variants:
     input:
-        pesr='pesr_rd/pesr_rd.pesr.bed',
-        depth='pesr_rd/pesr_rd.depth.bed',
-        pairings='pesr_rd/pesr_depth_pairings.txt'
+        'integration/pesr_depth/signal_specific_calls/cohort.{source}_only.{chrom}.bed'
     output:
-        pesr_rd='pesr_rd/pesr_and_rd.bed',
-        merged='pesr_rd/pesr_rd.merged.bed'
-    shell:
-        """
-        ./scripts/merge_pesr_rd.py {input} {output.pesr_rd};
-        cat {input.pesr} {input.depth} {output.pesr_rd} \
-            | sort -k1,1V -k2,2n > {output.merged};
-        """
+        'integration/pesr_depth/signal_specific_variants/cohort.{source}_only.{chrom}.bed'
+    run:
+        import pandas as pd
+        calls = pd.read_table(input[0])
+        cols = '#chrom start end name svtype pesr_name depth_name'.split()
+        variants = calls[cols].drop_duplicates()
+        samples = calls.groupby('name')['sample']\
+                       .agg(lambda s: ','.join(sorted(set(s))))\
+                       .rename('samples').reset_index()
+        variants = pd.merge(variants, samples, on='name', how='left')
+        cols = '#chrom start end name svtype samples pesr_name depth_name'.split()
+        variants[cols].to_csv(output[0], sep='\t', index=False)
+        
+rule get_pesr_depth_variants:
+    input:
+        pesr='integration/pesr/rdtest_filtered/cohort.{chrom}.bed',
+        depth='integration/depth/rdtest_filtered/cohort.{chrom}.bed',
+        links='integration/pesr_depth/pesr_depth_links.{chrom}.txt'
+    output:
+        'integration/pesr_depth/signal_specific_variants/cohort.pesr_depth.{chrom}.bed'
+    script:
+        "scripts/get_pesr_depth_calls.py"
+        
 
-rule collect_variants:
+rule combine_signal_variants:
     input:
-        'pesr_rd/pesr_rd.merged.bed'
+        'integration/pesr_depth/signal_specific_variants/cohort.pesr_depth.{chrom}.bed',
+        'integration/pesr_depth/signal_specific_variants/cohort.pesr_only.{chrom}.bed',
+        'integration/pesr_depth/signal_specific_variants/cohort.depth_only.{chrom}.bed'
     output:
-        bed='pesr_rd/variants.bed';
-        final='variants/polymorphic_cnv.variants.bed.gz'
+        bed='integration/pesr_depth/variants/cohort.{chrom}.bed.gz',
+        idx='integration/pesr_depth/variants/cohort.{chrom}.bed.gz.tbi',
     shell:
         """
-        ./scripts/collect_variants.py {input} {output.bed};
-        cut -f1-10 {output.bed} | sed -e '1s/^/#/' | bgzip -c > {output.final};
-        tabix -p bed {output.final}
+        cat {input} \
+          | sed '/^#chrom/d' \
+          | sort -k1,1V -k2,2n \
+          | cat <(head -n1 {input[0]}) - \
+          | bgzip -c \
+          > {output.bed};
+        tabix -p bed {output.bed}
         """
-    
