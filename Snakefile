@@ -33,7 +33,7 @@ wildcard_constraints:
 
 rule all:
     input:
-        'integration/pesr_depth/variants/cohort.22.bed.gz',
+        expand('integration/pesr_depth/variants/cohort.{chrom}.bed.gz', chrom=CHROMS),
         expand('integration/pesr/bca/cohort.{chrom}.vcf', chrom=CHROMS),
 
 # TODO: add rules per submodule
