@@ -31,8 +31,6 @@ wildcard_constraints:
     svtype='(' + '|'.join(SVTYPES) + ')',
     chrom='(' + '|'.join(CHROMS) + ')'
 
-print(CHROMS)
-
 rule all:
     input:
         'integration/pesr_depth/variants/cohort.22.bed.gz',
