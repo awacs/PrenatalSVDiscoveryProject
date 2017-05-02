@@ -16,16 +16,6 @@ $ conda create -n $environment -c bioconda python=3.5 numpy scipy pysam snakemak
 $ source activate $environment
 ```
 
-### SVtools
-The pipeline requires the `svtools` Python package, which is currently
-available only on github.
-
-```
-$ git clone git@github.com:talkowski-lab/svtools.git
-$ cd svtools
-$ pip install -e .
-```
-
 ### Snakemake
 The pipeline is built with `snakemake`, which can be installed through `pip` or
 `conda` with one of the two following commands.
@@ -43,6 +33,16 @@ page](https://snakemake.readthedocs.io/en/stable/). A
 [tutorial](https://snakemake.bitbucket.io/snakemake-tutorial.html) and
 [demonstrative slides](http://slides.com/johanneskoester/deck-1#/) are also
 available. 
+
+### SVtools
+The pipeline requires the `svtools` Python package, which is currently
+available only on github.
+
+```
+$ git clone git@github.com:talkowski-lab/svtools.git
+$ cd svtools
+$ pip install -e .
+```
 
 ## Installation and Usage
 As a `snakemake` workflow, the pipeline is intended to be cloned for each
