@@ -8,5 +8,5 @@
 # Distributed under terms of the MIT license.
 
 outdir=doc/figures
-snakemake -R --dag | dot -T png > ${outdir}/dag.png
-snakemake -R --rulegraph | dot -T png > ${outdir}/rulegraph.png
+snakemake -F --dag | dot -T png > ${outdir}/dag.png
+snakemake -F --rulegraph | dot -T png > ${outdir}/rulegraph.png
