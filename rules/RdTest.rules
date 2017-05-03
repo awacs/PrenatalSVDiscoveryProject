@@ -1,6 +1,9 @@
 
 module_config = config['RdTest']
 
+with open(config['chroms']) as clist:
+    CHROMS = [c.strip() for c in clist.readlines()]
+
 def rdtest_bed(wildcards):
     if wildcards.source == 'depth':
         path = 'integration/depth/rdtest_beds/cohort.{chrom}.bed'
