@@ -26,7 +26,7 @@ rule standardize_cnmops:
         autosomal='data/raw_beds/cnmops/SFARI.519.cohort.bed.gz',
         allosomal=raw_cnmops_allosomal,
     output:
-        'preprocessing/std_beds/cnmops/{sample}.{svtype}.raw.bed'
+        bed='preprocessing/std_beds/cnmops/{sample}.{svtype}.raw.bed'
     params:
         ssc=lambda wildcards: ID_MAP[wildcards.sample],
         svtype=lambda wildcards: wildcards.svtype.lower()
@@ -48,7 +48,7 @@ rule standardize_cnvnator:
     input:
         raw_cnvnator_bed
     output:
-        'preprocessing/std_beds/cnvnator/{sample}.{svtype}.raw.bed'
+        bed='preprocessing/std_beds/cnvnator/{sample}.{svtype}.raw.bed'
     shell:
         """
         awk -v OFS="\\t" '{{print $1, $2+50, $5+50, $8, "0", "1", "0"}}' {input} > {output};
@@ -62,7 +62,7 @@ rule standardize_genomestrip:
     input:
         raw_genomestrip_bed
     output:
-        'preprocessing/std_beds/genomestrip/{sample}.{svtype}.raw.bed'
+        bed='preprocessing/std_beds/genomestrip/{sample}.{svtype}.raw.bed'
     shell:
         """
         awk -v OFS="\\t" '{{print $1, $2, $3, $4-$3, "0", "0", "1"}}' {input} > {output}
@@ -70,23 +70,33 @@ rule standardize_genomestrip:
 
 rule concat_standardized_beds:
     input:
-        expand('preprocessing/std_beds/{source}/{{sample}}.{{svtype}}.raw.bed', source=SOURCES)
+        rules.standardize_cnmops.output.bed,
+        rules.standardize_cnvnator.output.bed,
+        rules.standardize_genomestrip.output.bed,
     output:
-        'preprocessing/std_beds/merged_algs/{sample}.{svtype}.raw.bed'
+        bed='preprocessing/std_beds/merged_algs/{sample}.{svtype}.raw.bed'
     shell:
         """
         cat {input} | sort -k1,1V -k2,2n > {output}
         """ 
 
+def unmerged_bed(wildcards):
+    if wildcards.source == 'cnmops':
+        return rules.standardize_cnmops.output.bed
+    if wildcards.source == 'cnvnator':
+        return rules.standardize_cnvnator.output.bed
+    if wildcards.source == 'genomestrip':
+        return rules.standardize_genomestrip.output.bed
+    if wildcards.source == 'merged_algs':
+        return rules.concat_standardized_beds.output.bed
+
 rule merge_raw_depth_calls:
     input:
-        'preprocessing/std_beds/{source}/{sample}.{svtype}.raw.bed'
+        bed=unmerged_bed
     output:
         merged='preprocessing/std_beds/{source}/{sample}.{svtype}.merged.bed' 
     params:
         dist=0
-    wildcard_constraints:
-        source='(' + '|'.join(SOURCES) + '|merged_algs)'
     shell:
         """
         bedtools merge -i {input} -d {params.dist} -c 4,5,6 -o sum \
@@ -96,10 +106,12 @@ rule merge_raw_depth_calls:
 
 rule caller_coverage:
     input:
-        merged='preprocessing/std_beds/merged_algs/{sample}.{svtype}.merged.bed',
-        originals=expand('preprocessing/std_beds/{source}/{{sample}}.{{svtype}}.merged.bed', source=SOURCES)
+        merged=rules.merge_raw_depth_calls.output.merged.format(
+                         source='merged_algs', sample='{sample}', svtype='{svtype}'),
+        originals=expand(rules.merge_raw_depth_calls.output.merged,
+                         source=SOURCES, sample='{sample}', svtype='{svtype}')
     output:
-        'preprocessing/std_beds/merged_algs/{sample}.{svtype}.cov.bed'
+        bed='preprocessing/std_beds/merged_algs/{sample}.{svtype}.cov.bed'
     shell:
         """
         bedtools coverage -a {input.merged} -b {input.originals[0]} \
@@ -114,7 +126,7 @@ rule caller_coverage:
 
 rule concat_merged_depth_calls:
     input:
-        expand('preprocessing/std_beds/merged_algs/{sample}.{{svtype}}.cov.bed', sample=SAMPLES)
+        expand(rules.caller_coverage.output.bed, sample=SAMPLES, svtype='{svtype}')
     output:
         bed='preprocessing/std_beds/cohort.{svtype}.bed.gz',
         idx='preprocessing/std_beds/cohort.{svtype}.bed.gz.tbi',

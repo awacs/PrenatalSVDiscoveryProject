@@ -17,10 +17,9 @@ with open(config['quads']) as qlist:
 
 rule make_alg_vcf_list:
     input:
-        expand('preprocessing/filtered_vcfs/{{source}}.{quad}.vcf.gz',
-               quad=QUADS),
+        expand(rules.sort_vcfs.output.vcf, quad=QUADS, source='{source}')
     output:
-        'integration/pesr/vcflists/vcfs.{source}.list'
+        vcflist='integration/pesr/vcflists/vcfs.{source}.list'
     run:
         with open(output[0], 'w') as fout:
             for fname in sorted(input):
@@ -29,7 +28,7 @@ rule make_alg_vcf_list:
 rule vcfcluster_by_alg:
     """Cluster calls from a single algorithm across samples."""
     input:
-        'integration/pesr/vcflists/vcfs.{source}.list'
+        vcflist=rules.make_alg_vcf_list.output.vcflist
     output:
         vcf='integration/pesr/vcfcluster/{source}/cohort.{chrom}.vcf',
     params:
@@ -46,26 +45,10 @@ rule vcfcluster_by_alg:
             -x {params.blacklist}
         """
 
-# rule merge_alg_vcfs:
-#     """Merge chromosome VCFs"""
-#     input:
-#         vcfs=expand('integration/pesr/vcfcluster/{{source}}/cohort.{chrom}.vcf', chrom=CHROMS)
-#     output:
-#         vcf='integration/pesr/vcfcluster/{source}/cohort.vcf.gz',
-#         idx='integration/pesr/vcfcluster/{source}/cohort.vcf.gz.tbi',
-#     params:
-#         tmpdir='scratch/'
-#     shell:
-#         """
-#         tmpdir=$(mktemp -d -p {params.tmpdir});
-#         vcf-concat {input.vcfs} | vcf-sort -c -t $tmpdir | bgzip -c > {output.vcf}; 
-#         tabix -p vcf {output.vcf}; 
-#         """
-
 rule make_pesr_rdtest_beds:
     input:
-        'integration/pesr/vcfcluster/{source}/cohort.{chrom}.vcf'
+        vcf=rules.vcfcluster_by_alg.output.vcf
     output:
-        'integration/pesr/rdtest_beds/{source}/cohort.{chrom}.bed'
+        bed='integration/pesr/rdtest_beds/{source}/cohort.{chrom}.bed'
     shell:
         "./scripts/make_pesr_rdtest_bed.py {input} {output}"

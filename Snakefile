@@ -3,10 +3,10 @@ configfile: 'config.yaml'
 
 include: 'rules/pesr_preprocessing.rules'
 include: 'rules/depth_preprocessing.rules'
-include: 'rules/depth_integration.rules'
 include: 'rules/pesr_alg_integration.rules'
-include: 'rules/pesr_cohort_integration.rules'
+include: 'rules/depth_integration.rules'
 include: 'rules/RdTest.rules'
+include: 'rules/pesr_cohort_integration.rules'
 include: 'rules/pesr_depth_integration.rules'
 
 PESR_SOURCES = config['pesr_sources']

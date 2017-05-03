@@ -21,9 +21,9 @@ with open(config['chroms']) as clist:
 # Intersect merged calls across samples
 rule depth_intersect:
     input:
-        'preprocessing/std_beds/cohort.{svtype}.bed.gz'
+        bed=rules.concat_merged_depth_calls.output.bed
     output:
-        'integration/depth/intersection/cohort.{svtype}.{chrom}.bed.gz'
+        bed='integration/depth/intersection/cohort.{svtype}.{chrom}.bed.gz'
     params:
         frac=0.8
     shell:
@@ -37,9 +37,9 @@ rule depth_intersect:
 # List of unique variant lists necessary for running bedcluster
 rule make_depth_variant_lists:
     input:
-        'preprocessing/std_beds/cohort.{svtype}.bed.gz'
+        bed=rules.concat_merged_depth_calls.output.bed
     output:
-        'integration/depth/variant_lists/cohort.{svtype}.{chrom}.list'
+        list='integration/depth/variant_lists/cohort.{svtype}.{chrom}.list'
     shell:
         """
         tabix {input} {wildcards.chrom} | cut -f4 > {output}
@@ -51,10 +51,10 @@ def variant_prefix(wildcards):
 # Cluster intersected bed
 rule bedcluster:
     input:
-        intersect_bed='integration/depth/intersection/cohort.{svtype}.{chrom}.bed.gz',
-        variant_list='integration/depth/variant_lists/cohort.{svtype}.{chrom}.list'
+        intersect_bed=rules.depth_intersect.output.bed,
+        variant_list=rules.make_depth_variant_lists.output.list
     output:
-        'integration/depth/bedcluster/cohort_split.{svtype}.{chrom}.bed'
+        bed='integration/depth/bedcluster/cohort_split.{svtype}.{chrom}.bed'
     params:
         prefix=variant_prefix
     shell:
@@ -67,10 +67,9 @@ rule bedcluster:
 # Merge split bed
 rule merge_across_svtypes:
     input:
-        expand('integration/depth/bedcluster/cohort_split.{svtype}.{{chrom}}.bed',
-               svtype=CNV)
+        expand(rules.bedcluster.output.bed, svtype=CNV, chrom='{chrom}')
     output:
-        'integration/depth/bedcluster/cohort.{chrom}.bed'
+        bed='integration/depth/bedcluster/cohort.{chrom}.bed'
     shell:
         """
         head -n1 {input[0]} > {output};
@@ -79,7 +78,7 @@ rule merge_across_svtypes:
 
 rule make_depth_rdtest_bed:
     input:
-        bed='integration/depth/bedcluster/cohort.{chrom}.bed'
+        bed=rules.merge_across_svtypes.output.bed
     output:
         'integration/depth/rdtest_beds/cohort.{chrom}.bed'
     script:
@@ -87,7 +86,7 @@ rule make_depth_rdtest_bed:
 
 rule rdtest_filter_depth:
     input:
-        bed='integration/depth/bedcluster/cohort.{chrom}.bed',
+        bed=rules.merge_across_svtypes.output.bed,
         list='rdtest/depth/cohort.rdtest_pass.{chrom}.list'
     output:
         bed='integration/depth/rdtest_filtered/cohort.{chrom}.bed'
