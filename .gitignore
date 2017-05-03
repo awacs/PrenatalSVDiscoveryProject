@@ -9,6 +9,9 @@ preprocessing/*
 integration/*
 rdtest/*
 
+# Or symlinks to data
+data
+
 # Do track each module's scripts, Snakefiles, configurations, and READMEs
 !*/scripts/
 !*/Snakefile
