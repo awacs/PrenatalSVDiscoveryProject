@@ -10,7 +10,7 @@ rule standardize_vcf:
     input:
         'data/raw_vcfs/{source}/{source}.{quad}.vcf.gz'
     output:
-        vcf='preprocessing/std_vcfs/{source}.{quad}.vcf'
+        vcf='std_vcfs/{source}.{quad}.vcf'
     shell:
         """
         standardize_vcf {input} {output} {wildcards.source}
@@ -20,7 +20,7 @@ rule identify_vcf_outliers:
     input:
         expand(rules.standardize_vcf.output.vcf, quad=QUADS, source='{source}')
     output:
-        outliers='preprocessing/outliers/{source}.list'
+        outliers='outliers/{source}.list'
     params:
         svtypes=SVTYPES
     script:
@@ -31,7 +31,7 @@ rule remove_vcf_outliers:
         vcf=rules.standardize_vcf.output.vcf,
         outliers=rules.identify_vcf_outliers.output.outliers
     output:
-        vcf=temp('preprocessing/filtered_vcfs/{source}.{quad}.vcf')
+        vcf=temp('filtered_vcfs/{source}.{quad}.vcf')
     script:
         "scripts/remove_outliers.py"
 
@@ -39,8 +39,8 @@ rule sort_vcfs:
     input:
         vcf=rules.remove_vcf_outliers.output.vcf
     output:
-        vcf='preprocessing/filtered_vcfs/{source}.{quad}.vcf.gz',
-        idx='preprocessing/filtered_vcfs/{source}.{quad}.vcf.gz.tbi',
+        vcf='filtered_vcfs/{source}.{quad}.vcf.gz',
+        idx='filtered_vcfs/{source}.{quad}.vcf.gz.tbi',
     shell:
         """
         vcf-sort -c {input} | bgzip -c > {output.vcf};

@@ -1,0 +1,24 @@
+"""
+merge_assess.snake
+Matthew Stone <mstone5@mgh.harvard.edu>
+
+"""
+
+configfile: 'config.yaml'
+
+include: 'rules/pesr_preprocessing.rules'
+include: 'rules/depth_preprocessing.rules'
+
+with open(config['quads']) as qlist:
+    QUADS = [q.strip() for q in qlist.readlines()]
+
+PESR_SOURCES = config['pesr_sources']
+CNV = config['cnv_types']
+
+rule all:
+    input:
+        expand('filtered_vcfs/{source}.{quad}.vcf.gz',
+               source=PESR_SOURCES, quad=QUADS),
+        expand('std_beds/cohort.{svtype}.bed.gz', svtype=CNV)
+
+

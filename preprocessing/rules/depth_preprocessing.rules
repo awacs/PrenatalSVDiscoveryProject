@@ -26,7 +26,7 @@ rule standardize_cnmops:
         autosomal='data/raw_beds/cnmops/SFARI.519.cohort.bed.gz',
         allosomal=raw_cnmops_allosomal,
     output:
-        bed='preprocessing/std_beds/cnmops/{sample}.{svtype}.raw.bed'
+        bed='std_beds/cnmops/{sample}.{svtype}.raw.bed'
     params:
         ssc=lambda wildcards: ID_MAP[wildcards.sample],
         svtype=lambda wildcards: wildcards.svtype.lower()
@@ -48,7 +48,7 @@ rule standardize_cnvnator:
     input:
         raw_cnvnator_bed
     output:
-        bed='preprocessing/std_beds/cnvnator/{sample}.{svtype}.raw.bed'
+        bed='std_beds/cnvnator/{sample}.{svtype}.raw.bed'
     shell:
         """
         awk -v OFS="\\t" '{{print $1, $2+50, $5+50, $8, "0", "1", "0"}}' {input} > {output};
@@ -62,7 +62,7 @@ rule standardize_genomestrip:
     input:
         raw_genomestrip_bed
     output:
-        bed='preprocessing/std_beds/genomestrip/{sample}.{svtype}.raw.bed'
+        bed='std_beds/genomestrip/{sample}.{svtype}.raw.bed'
     shell:
         """
         awk -v OFS="\\t" '{{print $1, $2, $3, $4-$3, "0", "0", "1"}}' {input} > {output}
@@ -74,7 +74,7 @@ rule concat_standardized_beds:
         rules.standardize_cnvnator.output.bed,
         rules.standardize_genomestrip.output.bed,
     output:
-        bed='preprocessing/std_beds/merged_algs/{sample}.{svtype}.raw.bed'
+        bed='std_beds/merged_algs/{sample}.{svtype}.raw.bed'
     shell:
         """
         cat {input} | sort -k1,1V -k2,2n > {output}
@@ -94,7 +94,7 @@ rule merge_raw_depth_calls:
     input:
         bed=unmerged_bed
     output:
-        merged='preprocessing/std_beds/{source}/{sample}.{svtype}.merged.bed' 
+        merged='std_beds/{source}/{sample}.{svtype}.merged.bed' 
     params:
         dist=0
     shell:
@@ -111,7 +111,7 @@ rule caller_coverage:
         originals=expand(rules.merge_raw_depth_calls.output.merged,
                          source=SOURCES, sample='{sample}', svtype='{svtype}')
     output:
-        bed='preprocessing/std_beds/merged_algs/{sample}.{svtype}.cov.bed'
+        bed='std_beds/merged_algs/{sample}.{svtype}.cov.bed'
     shell:
         """
         bedtools coverage -a {input.merged} -b {input.originals[0]} \
@@ -128,8 +128,8 @@ rule concat_merged_depth_calls:
     input:
         expand(rules.caller_coverage.output.bed, sample=SAMPLES, svtype='{svtype}')
     output:
-        bed='preprocessing/std_beds/cohort.{svtype}.bed.gz',
-        idx='preprocessing/std_beds/cohort.{svtype}.bed.gz.tbi',
+        bed='std_beds/cohort.{svtype}.bed.gz',
+        idx='std_beds/cohort.{svtype}.bed.gz.tbi',
     shell:
         """
         cat {input} \
