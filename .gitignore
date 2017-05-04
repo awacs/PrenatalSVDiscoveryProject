@@ -15,6 +15,7 @@ data
 # Do track each module's scripts, Snakefiles, configurations, and READMEs
 !*/scripts/
 !*/Snakefile
+!*/rules/
 !*/config.yaml
 !*/cluster.yaml
 !*/README.md
