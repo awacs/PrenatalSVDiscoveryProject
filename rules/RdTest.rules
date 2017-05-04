@@ -33,7 +33,7 @@ rule rdtest_filter:
     input:
         zrank='rdtest/{source}/cohort.{chrom}.bed_HomPowerPZRank.txt',
     output:
-        'rdtest/{source}/cohort.rdtest_pass.{chrom}.list'
+        list='rdtest/{source}/cohort.rdtest_pass.{chrom}.list'
     shell:
         """
         sed '1d' {input} | cut -f4 > {output}
