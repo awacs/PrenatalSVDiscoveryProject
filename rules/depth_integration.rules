@@ -21,7 +21,7 @@ with open(config['chroms']) as clist:
 # Intersect merged calls across samples
 rule depth_intersect:
     input:
-        bed=rules.concat_merged_depth_calls.output.bed
+        bed='preprocessing/std_beds/cohort.{svtype}.bed.gz'
     output:
         bed='integration/depth/intersection/cohort.{svtype}.{chrom}.bed.gz'
     params:
@@ -37,7 +37,7 @@ rule depth_intersect:
 # List of unique variant lists necessary for running bedcluster
 rule make_depth_variant_lists:
     input:
-        bed=rules.concat_merged_depth_calls.output.bed
+        bed='preprocessing/std_beds/cohort.{svtype}.bed.gz'
     output:
         list='integration/depth/variant_lists/cohort.{svtype}.{chrom}.list'
     shell:

@@ -17,7 +17,8 @@ with open(config['quads']) as qlist:
 
 rule make_alg_vcf_list:
     input:
-        expand(rules.sort_vcfs.output.vcf, quad=QUADS, source='{source}')
+        expand('preprocessing/filtered_vcfs/{{source}}.{quad}.vcf.gz',
+               quad=QUADS)
     output:
         vcflist='integration/pesr/vcflists/vcfs.{source}.list'
     run:
