@@ -13,7 +13,7 @@ rule standardize_vcf:
         vcf='std_vcfs/{source}.{quad}.vcf'
     shell:
         """
-        standardize_vcf {input} {output} {wildcards.source}
+        svtools standardize {input} {output} {wildcards.source}
         """
 
 rule identify_vcf_outliers:

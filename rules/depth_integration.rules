@@ -60,7 +60,7 @@ rule bedcluster:
     shell:
         """
         zcat {input.intersect_bed} \
-          | bedcluster {input.variant_list} -p {params.prefix} --merge-coordinates \
+          | svtools bedcluster {input.variant_list} -p {params.prefix} --merge-coordinates \
           > {output}
         """
 

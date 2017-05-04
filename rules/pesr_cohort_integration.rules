@@ -57,7 +57,7 @@ rule vcfcluster_filtered:
         prefix='cohort.merged_algs',
     shell:
         """
-        vcfcluster {input} {output.vcf} \
+        svtools vcfcluster {input} {output.vcf} \
             -r {wildcards.chrom} \
             -p {params.prefix} \
             -d {params.min_dist} \

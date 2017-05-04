@@ -37,7 +37,7 @@ rule vcfcluster_by_alg:
         prefix=lambda wildcards: 'cohort.{0}'.format(wildcards.source)
     shell:
         """
-        vcfcluster {input} {output.vcf} \
+        svtools vcfcluster {input} {output.vcf} \
             -r {wildcards.chrom} \
             -p {params.prefix} \
             -d {params.min_dist} \
