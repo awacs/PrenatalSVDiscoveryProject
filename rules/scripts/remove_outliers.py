@@ -74,6 +74,8 @@ def main():
     for record in remove_outliers(vcf, outliers):
         filtered.write(record)
 
+    filtered.close()
+
 
 if __name__ == '__main__':
     main()
