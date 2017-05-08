@@ -19,7 +19,6 @@ rule all:
     input:
         expand('filtered_vcfs/{source}.{quad}.vcf.gz',
                source=PESR_SOURCES, quad=QUADS),
-        expand('std_beds/cohort.{svtype}.bed.gz', svtype=CNV)
     output:
         touch('all.done')
 

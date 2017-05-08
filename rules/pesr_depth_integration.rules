@@ -18,29 +18,18 @@ rule pesr_depth_intersection:
         pesr='integration/pesr/rdtest_filtered/cohort.{chrom}.bed',
         depth='integration/depth/rdtest_filtered/cohort.{chrom}.bed',
     output:
-        temp('integration/pesr_depth/intersection/{sample}.intersection.{chrom}.bed')
+        'integration/pesr_depth/intersection/cohort.{chrom}.bed'
     params:
         frac=0.8
     shell:
         """
         bedtools intersect -wa -wb -loj -r -f {params.frac} \
-            -a <(cut -f -6 {input.pesr} | fgrep -w -e {wildcards.sample}) \
-            -b <(cut -f -6 {input.depth} | fgrep -w -e {wildcards.sample}) \
-          | awk '($5==$11)' \
+            -a <(cut -f -6 {input.pesr} | sort -k1,1V -k2,2n) \
+            -b <(cut -f -6 {input.depth} | sort -k1,1V -k2,2n) \
+          | awk '($5==$11 && $6==$12)' \
           > {output}
         """
           
-rule combine_sample_pesr_depth_intersections:
-    input:
-        expand('integration/pesr_depth/{{dirname}}/{sample}.{{dirname}}.{{chrom}}.bed',
-               sample=SAMPLES)
-    output:
-        'integration/pesr_depth/{dirname}/cohort.{chrom}.bed'
-    shell:
-        """
-        cat {input} | sort -k1,1V -k2,2n > {output}
-        """
-
 rule get_pesr_depth_links:
     input:
         pesr_depth='integration/pesr_depth/intersection/cohort.{chrom}.bed',
