@@ -48,6 +48,15 @@ $ pip install -e .
 The pipeline requires bedtools 2.26 or later. Earlier versions may throw an
 error when `bedtools merge` is passed an empty file.
 
+### pybedtools
+In order to perform per-chromosome parallelization, the master branch of 
+`pybedtools` is required (or at least commit `b1e0ce0`).
+
+```
+$ pip install git+git://github.com/daler/pybedtools.git@master
+$ pip install git+git://github.com/daler/pybedtools.git@b1e0ce0
+```
+
 ## Installation and Usage
 As a `snakemake` workflow, the pipeline is intended to be cloned for each
 project, e.g.
