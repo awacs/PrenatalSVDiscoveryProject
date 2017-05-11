@@ -1,11 +1,17 @@
 
 configfile: 'config.yaml'
 
+subworkflow background:
+    workdir: "."
+    snakefile: "background.snake"
+
 import numpy as np
+from collections import defaultdict
 
 COORDS = {}
+SAMPLES = defaultdict(list)
 
-with open(config['bed']) as bedfile:
+with open(background('sr_testing.w_background.bed')) as bedfile:
     window = config['window']
     for line in bedfile:
         if line.startswith('#'):
@@ -27,70 +33,51 @@ with open(config['bed']) as bedfile:
             coords = coords.format(**locals())
 
         name = data[3]
+
+        samples = data[4].split(',')
+        for sample in samples:
+            SAMPLES[name].append(sample)
+            # if name != 'polymorphic_cnv_3041':
+            #     continue
+            # NAME_SAMPLES.append('{0}__{1}'.format(name, sample))
         
         COORDS[name] = coords
+
+NAMES = sorted(COORDS.keys())
 
 rule all:
     input:
         'split_counts/polymorphic_cnv_3041.txt'
         
-wildcard_constraints:
-    name='polymorphic_cnv_\d+',
-    quad="\d{5}"
-
-
-rule make_background:
-    output:
-        bed='sr_testing.background.bed'
-    shell:
-        "./choose_background.py {config[bed]} {config[quads]} {output}"
-
-rule merge_background:
-    input:
-        bed=config['bed'],
-        bg=rules.make_background.output.bed
-    output:
-        bed='sr_testing.w_background.bed'
-    run:
-        import pandas as pd
-        bed = pd.read_table(input.bed)
-        bg = pd.read_table(input.bg)
-        bg_samples = bg['name samples'.split()].rename(columns={'samples': 'bg_samples'})
-        bed = pd.merge(bed, bg_samples, on='name', how='left')
-        bed['samples'] = bed['samples'] + ',' + bed['bg_samples']
-        cols = '#chrom start end name samples svtype batch'.split()
-        bed[cols].to_csv(output[0], index=False, sep='\t')
-
-
 rule count_splits:
     input:
-        bed=rules.merge_background.output.bed
+        bed=background("sr_testing.w_background.bed")
     output:
-        'split_counts/{name}.txt'
+        temp('split_counts_samples/{name}__{sample}.txt')
     params:
         coords=lambda wildcards: COORDS[wildcards.name],
         min_splits=config['min_splits'],
     shell:
         """
-        bed=$(readlink -f {input.bed});
+        count_splits=$(readlink -f count_splits.py);
         fout=$(readlink -f {output});
-        count_splits=$(readlink -f count_splits.py)
         cd bam_indexes;
-        awk '($4=="{wildcards.name}") {{print $5}}' $bed | sed -e 's/,/\\n/g' \
-          | while read sample; do
-              samtools view -h $(s3bam $sample) {params.coords} \
-                | $count_splits --min-splits {params.min_splits} $sample $fout;
-            done;
-        cd ..
+        samtools view -h $(s3bam {wildcards.sample}) {params.coords} \
+          | $count_splits --min-splits {params.min_splits} {wildcards.sample} $fout
         """
 
-# rule combine_splits:
-#     input:
-#         bed=config['bed'],
-#         split_counts=expand('split_counts/{NS}.txt', NS=NAME_SAMPLES)
-#     params:
-#         window=config['window']
-#     output:
-#         'split_counts.txt'
-#     script:
-#         "combine_splits.py"
+def get_split_list(wildcards):
+    path = 'split_counts_samples/{name}__{{sample}}.txt'.format(name=wildcards.name)
+    samples = SAMPLES[wildcards.name]
+    return expand(path, sample=samples)
+
+rule combine_splits:
+    input:
+        bed=config['bed'],
+        split_counts=get_split_list
+    params:
+        window=config['window']
+    output:
+        'split_counts/{name}.txt'
+    script:
+        "combine_splits.py"

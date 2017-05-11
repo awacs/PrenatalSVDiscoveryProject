@@ -34,7 +34,6 @@ def coord_dist(row):
 
 
 def main():
-
     # get list of samples called in each variant
     bed = open(snakemake.input.bed)
     called_keys = deque()
@@ -48,7 +47,7 @@ def main():
     # Read in each dataframe (until pysam can read from S3)
     dfs = deque()
     for fname in snakemake.input.split_counts:
-        name = os.path.basename(fname).split('.')[0]
+        name = os.path.basename(fname).split('__')[0]
         df = pd.read_table(fname)
         df['name'] = name
         dfs.append(df)
@@ -57,11 +56,10 @@ def main():
     # Label called samples
     df['called_key'] = df['name'] + '__' + df['sample']
     df.loc[df.called_key.isin(called_keys), 'call_status'] = 'called'
-    df.loc[~df.called_key.isin(called_keys), 'call_status'] = 'no_call'
+    df.loc[~df.called_key.isin(called_keys), 'call_status'] = 'background'
 
     # Add call coordinates
-    names = 'chrom start end name samples svtype'.split()
-    bed_df = pd.read_table(snakemake.input.bed, names=names)
+    bed_df = pd.read_table(snakemake.input.bed)
     bed_df = bed_df.drop('samples', axis=1)
     df = pd.merge(df, bed_df, on='name', how='left')
 
@@ -76,7 +74,9 @@ def main():
 
     # Output
     df = df.drop('called_key', axis=1)
-    df.to_csv(snakemake.output[0], index=False, sep='\t')
+    df['count'] = df['count'].astype(int)
+    cols = 'name sample call_status coord dist count'.split()
+    df[cols].to_csv(snakemake.output[0], index=False, sep='\t')
 
 
 if __name__ == '__main__':
