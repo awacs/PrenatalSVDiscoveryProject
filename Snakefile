@@ -1,17 +1,34 @@
 
 configfile: 'config.yaml'
 
+import numpy as np
+
 COORDS = {}
 QUAD_NAMES = [] 
+NAME_SAMPLES = []
 
 with open(config['quads']) as qlist:
     QUADS = [q.strip() for q in qlist]
 
 with open(config['bed']) as bedfile:
+    window = config['window']
     for line in bedfile:
         data = line.strip().split()
-        coords = ' '.join(data[:3])
+        chrom = data[0]
+        start = int(data[1])
+        end = int(data[2])
+        startA = start - window
+        startB = start + window
+        endA = end - window
+        endB = end + window
+        if endA <= startB:
+            coords = '{chrom}:{startA}-{endB}'.format(**locals())
+        else:
+            coords = '{chrom}:{startA}-{startB} {chrom}:{endA}-{endB}'
+            coords = coords.format(**locals())
+
         name = data[3]
+        quad = data[4]
         samples = data[4].split(',')
         quads = sorted(set([s.split('.')[0] for s in samples]))
         
@@ -19,145 +36,58 @@ with open(config['bed']) as bedfile:
         
         #for quad in QUADS:
         for quad in quads:
+            for member in 'fa mo p1 s1'.split():
+                NAME_SAMPLES.append('{0}.{1}.{2}'.format(name, quad, member))
             QUAD_NAMES.append('{0}.{1}'.format(name, quad))
 
 rule all:
     input:
-        expand('psl_filtered/{NQ}.psl', NQ=QUAD_NAMES),
-        expand('tracks/{NQ}.bed', NQ=QUAD_NAMES),
-        'igv/merged.igv',
-        'blat.stopped'
+        'split_counts.txt'
         
 wildcard_constraints:
+    name='polymorphic_cnv_\d+',
     quad="\d{5}"
 
-rule gather_splits:
-    """Extract all split reads at locus in each family and reformat to fasta"""
+rule make_background:
     output:
-        'fasta/{name}.{quad}.fa'
+        'background.bed'
+    run:
+        bed = open(config['bed'])
+        fout = open(output[0], 'w')
+        np.random.seed(110517)
+        for line in bed:
+            data = line.strip().split()
+            samples = data[4].split(',')
+            called_quads = sorted(set([s.split('.')[0] for s in samples]))
+            bg_quads = [q for q in QUADS if q not in called_quads]
+            bg_quads = np.random.choice(quads, 40, replace=False)
+            bg_samples = ['{0}.{1}'.format(quad, member) \
+                          for quad in bg_quads \
+                          for member in 'fa mo p1 s1'.split()]
+            data[4] = ','.join(bg_samples)
+            entry = '\t'.join(data)
+            fout.write(entry + '\n')
+        fout.close()
+
+rule count_splits:
+    output:
+        'split_counts/{name}.{sample}.txt'
     params:
-        coords=lambda wildcards: COORDS[wildcards.name]
+        coords=lambda wildcards: COORDS[wildcards.name],
+        min_splits=config['min_splits']
     shell:
         """
-        ./scripts/collect_reads.sh {params.coords} {wildcards.name} {wildcards.quad}
+        samtools view -h $(s3bam {wildcards.sample}) {params.coords} \
+          | ./count_splits.py --min-splits {params.min_splits} {wildcards.sample} {output} 
         """
 
-rule start_server:
-    """Start blat server"""
+rule combine_splits:
     input:
-        expand('fasta/{NQ}.fa', NQ=QUAD_NAMES)
-    output:
-        touch('blat.started')
-    shell:
-        """
-        ./scripts/start_server.sh \
-          {config[port]} {config[seqDir]} {config[db]}
-        """
-
-rule blat:
-    """Blat split reads at each locus in each family"""
-    input:
-        started='blat.started', 
-        fasta='fasta/{name}.{quad}.fa'
-    output:
-        psl='psl/{name}.{quad}.psl'
-    shell:
-        """
-        gfClient localhost {config[port]} {config[seqDir]} \
-          -minScore=0 -minIdentity=0 {input.fasta} {output.psl}
-        """
-
-rule stop_server:
-    """Stop blat server"""
-    input:
-        expand('psl/{NQ}.psl', NQ=QUAD_NAMES)
-    output:
-        touch('blat.stopped')
-    shell:
-        """
-        gfServer stop localhost {config[port]}
-        """
-
-rule filter_psl:
-    """Exclude blat mappings to other chromosomes"""
-    input:
-        'psl/{name}.{quad}.psl'
-    output:
-        'psl_filtered/{name}.{quad}.psl'
+        bed=config['bed'],
+        split_counts=expand('split_counts/{NS}.txt', NS=NAME_SAMPLES)
     params:
-        chrom=lambda wildcards: COORDS[wildcards.name].split()[0]
-    shell:
-        """
-        awk -v chrom={params.chrom} '($14==chrom)' {input} > {output}
-        """
-
-def windowed_coords(wildcards):
-    """Add viewing window to SV coordinates"""
-    coords = COORDS[wildcards.name]
-    chrom, start, end = coords.split()
-    start = int(start) - config['view_window']
-    end = int(end) + config['view_window']
-    return 'chr{0}:{1}-{2}'.format(chrom, start, end)
-
-rule make_blat_track:
-    """Create color-coded BED track of blat mappings"""
-    input:
-        'psl_filtered/{name}.{quad}.psl'
+        window=config['window']
     output:
-        'tracks/{name}.{quad}.bed'
-    params:
-        view_window=windowed_coords
-    shell:
-        """
-        echo "browser position {params.view_window}" > {output};
-        echo "track name=\"{wildcards.name} {wildcards.quad} SR\" visibility=2 itemRgb=On" >> {output};
-        ./scripts/make_blat_track.py {input} | sort -k1,1V -k2,2n >> {output};
-        """
-
-def start_window(wildcards):
-    """Add viewing window to SV coordinates"""
-    coords = COORDS[wildcards.name]
-    chrom, start, end = coords.split()
-    start = int(start) - config['view_window']
-    end = int(start) + config['view_window']
-    return 'chr{0}:{1}-{2}'.format(chrom, start, end)
-
-def end_window(wildcards):
-    """Add viewing window to SV coordinates"""
-    coords = COORDS[wildcards.name]
-    chrom, start, end = coords.split()
-    start = int(end) - config['view_window']
-    end = int(end) + config['view_window']
-    return 'chr{0}:{1}-{2}'.format(chrom, start, end)
-
-rule make_igv_batch:
-    """Create IGV batch file"""
-    input: 
-        'tracks/{name}.{quad}.bed'
-    output:
-        'igv/{name}.{quad}.igv'
-    params:
-        start_window=start_window,
-        end_window=end_window,
-    shell:
-        """
-        echo "new"; \
-        echo "genome hg19"; \
-        echo "snapshotDirectory {config[snapshots]}"; \
-        echo "load $(readlink -f {input})"; \
-        echo "goto {params.start_window}"; \
-        echo "snapshot {wildcards.name}.{wildcards.quad}.start.png"; \
-        echo "goto {params.end_window}"; \
-        echo "snapshot {wildcards.name}.{wildcards.quad}.end.png" > {output}
-        """
-
-rule merge_igv_batch:
-    """Merge IGV batch files"""
-    input:
-        expand('igv/{NQ}.igv', NQ=QUAD_NAMES)
-    output:
-        'igv/merged.igv'
-    shell:
-        """
-        cat {input} > {output}
-        """
+        'split_counts.txt'
+    script:
+        "combine_splits.py"
