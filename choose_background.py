@@ -27,6 +27,10 @@ def main():
     np.random.seed(110517)
     
     for line in args.bed:
+        if line.startswith('#'):
+            args.fout.write(line)
+            continue
+
         data = line.strip().split()
         samples = data[4].split(',')
         called_quads = sorted(set([s.split('.')[0] for s in samples]))
