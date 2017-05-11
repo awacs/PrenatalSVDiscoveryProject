@@ -127,7 +127,7 @@ def main():
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('sample')
-    parser.add_argument('fout')
+    parser.add_argument('fout', type=argparse.FileType('a'))
     parser.add_argument('--min-splits', type=int, default=2)
     parser.add_argument('bam', type=argparse.FileType('rb'),
                         nargs='?', default=sys.stdin)
@@ -140,7 +140,8 @@ def main():
     stack.map_splits()
     stack.count_splits(args.min_splits)
     stack.split_counts['sample'] = args.sample
-    stack.split_counts.to_csv(args.fout, sep='\t', index=False)
+    stack.split_counts.to_csv(args.fout, sep='\t', index=False, header=False)
+    args.fout.close()
 
 
 if __name__ == '__main__':

@@ -1,16 +1,7 @@
 # Input intervals to plot
-bed: test.background.bed
+bed: sr_testing.bed
 
 quads: ref/quads.519.list
-
-# Blat configuration
-port: 11194
-seqDir: data/
-db: human_g1k_v37.2bit
-
-# Track configuration
-view_window: 1000
-snapshots: 'snapshots'
 
 window: 250
 min_splits: 1
