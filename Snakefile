@@ -47,7 +47,7 @@ NAMES = sorted(COORDS.keys())
 
 rule all:
     input:
-        'split_counts/polymorphic_cnv_3041.txt'
+        expand('split_counts/{name}.txt', name=NAMES)
         
 rule count_splits:
     input:
