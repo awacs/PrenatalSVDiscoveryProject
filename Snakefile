@@ -26,7 +26,7 @@ with open(background('sr_testing.w_background.bed')) as bedfile:
         endA = end - window
         endB = end + window
         
-        if endA <= startB:
+        if endA >= startB:
             coords = '{chrom}:{startA}-{endB}'.format(**locals())
         else:
             coords = '{chrom}:{startA}-{startB} {chrom}:{endA}-{endB}'
@@ -44,6 +44,7 @@ with open(background('sr_testing.w_background.bed')) as bedfile:
         COORDS[name] = coords
 
 NAMES = sorted(COORDS.keys())
+NAMES = ['polymorphic_cnv_3041']
 
 rule all:
     input:
@@ -53,29 +54,33 @@ rule count_splits:
     input:
         bed=background("sr_testing.w_background.bed")
     output:
-        temp('split_counts_samples/{name}__{sample}.txt')
+        counts=touch('split_counts_samples/{name}')
     params:
         coords=lambda wildcards: COORDS[wildcards.name],
+        samples=lambda wildcards: SAMPLES[wildcards.name],
         min_splits=config['min_splits'],
     shell:
         """
         count_splits=$(readlink -f count_splits.py);
         fout=$(readlink -f {output});
         cd bam_indexes;
-        samtools view -h $(s3bam {wildcards.sample}) {params.coords} \
-          | $count_splits --min-splits {params.min_splits} {wildcards.sample} $fout
+        for sample in {params.samples}; do
+          samtools view -h $(s3bam $sample) {params.coords} \
+            | $count_splits --min-splits {params.min_splits} $sample ${{fout}}__${{sample}};
+        done
         """
 
 def get_split_list(wildcards):
-    path = 'split_counts_samples/{name}__{{sample}}.txt'.format(name=wildcards.name)
-    samples = SAMPLES[wildcards.name]
-    return expand(path, sample=samples)
+    path = expand(rules.count_splits.output.counts, 
+                  name=wildcards.name, sample=SAMPLES[wildcards.name])
+    return path
 
 rule combine_splits:
     input:
         bed=config['bed'],
-        split_counts=get_split_list
+        count_prefix=rules.count_splits.output.counts
     params:
+        samples=lambda wildcards: SAMPLES[wildcards.name],
         window=config['window']
     output:
         'split_counts/{name}.txt'
