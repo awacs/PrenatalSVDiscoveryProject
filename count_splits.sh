@@ -8,23 +8,24 @@
 # Distributed under terms of the MIT license.
 
 
-time_limit=4m
+time_limit=7m
 max_reads=1000000
 bam_indexes="bam_indexes"
-rerun_limit=5
+rerun_limit=7
 
 function usage() {
 cat <<EOF
 Usage: count_splits.sh [-h] [-t TIME_LIMIT] [-r READ_LIMIT]
                        [-d BAM_INDEXES] [-n RERUN_LIMIT]
-                       sample_list count_table regions
+                       <sample_list> <count_table> <log> [region ...]
 
 Query SR evidence at a breakpoint.
 
 Required arguments:
-  sample_list       Sample to query
-  count_table       Chromosome
-  regions           Position A (start)
+  sample_list       List of samples to query
+  count_table       Output table of split counts
+  log               AWS query log
+  region            Region(s) to query in each sample
 
 Optional arguments:
   -t TIME_LIMIT     Time limit for split assembly. [4m]
@@ -63,12 +64,12 @@ shift $(( OPTIND - 1 ))
 
 sample_list=$(readlink -f $1)
 fout=$(readlink -f $2)
-regions="${@:3}"
+log=$(readlink -f $3)
+regions="${@:4}"
 
 # Use absolute path after moving to index subdirectory
 count_splits=$(readlink -f ./scripts/count_splits.py)
 bam_indexes=$(readlink -f $bam_indexes)
-log=$(readlink -f log.txt)
 
 # Work from bam index directory to eliminate download time
 cd bam_indexes
@@ -99,7 +100,7 @@ while read sample; do
     fi
 
     # Write to stdout; write to file at end of loop
-    samtools view -h $bam "${regions}" 2> /dev/null \
+    samtools view -h $bam ${regions} 2> /dev/null \
       | timeout $time_limit $count_splits $sample 2> /dev/null
 
     # Check if S3 access succeeded
