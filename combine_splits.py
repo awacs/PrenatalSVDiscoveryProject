@@ -46,8 +46,11 @@ def main():
 
     # Read in each dataframe (until pysam can read from S3)
     dfs = deque()
-    for fname in snakemake.input.split_counts:
-        name = os.path.basename(fname).split('__')[0]
+    prefix = snakemake.input.count_prefix
+    name = os.path.basename(prefix)
+
+    for sample in snakemake.params.samples:
+        fname = prefix + '__' + sample
         df = pd.read_table(fname)
         df['name'] = name
         dfs.append(df)

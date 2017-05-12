@@ -105,7 +105,7 @@ class SplitStack:
             elif side == 'LEFT':
                 self.left_clips[pos].append(split)
 
-    def count_splits(self, min_splits=2):
+    def count_splits(self, min_splits=1):
         def _make_count_df(split_df):
             counts = {pos: len(deq) for pos, deq in split_df.items()}
             df = pd.DataFrame.from_dict({'count': counts})
@@ -128,7 +128,7 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('sample')
     parser.add_argument('fout', type=argparse.FileType('w'))
-    parser.add_argument('--min-splits', type=int, default=2)
+    parser.add_argument('--min-splits', type=int, default=1)
     parser.add_argument('bam', type=argparse.FileType('rb'),
                         nargs='?', default=sys.stdin)
     args = parser.parse_args()
