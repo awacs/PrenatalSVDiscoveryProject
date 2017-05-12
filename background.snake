@@ -16,7 +16,8 @@ VARIANTS = sorted(SAMPLES.keys())
     
 rule all:
     input:
-        expand('sample_lists/{name}.txt', name=VARIANTS)
+        expand('sample_lists/{name}.txt', name=VARIANTS),
+        'calls/sr_windows.txt'
 
 
 rule make_background:
@@ -31,22 +32,7 @@ rule make_windowed_regions:
     input:
         config['bed']
     output:
-        'calls/windowed.bed'
-    run:
-        "./add_windows.py {input} {output}"
+        'calls/sr_windows.txt'
+    shell:
+        "./add_windows.py {input} {config[window]} {output}"
 
-rule merge_background:
-    input:
-        bed=config['bed'],
-        bg=rules.make_background.output.bed
-    output:
-        bed='sr_testing.w_background.bed'
-    run:
-        import pandas as pd
-        bed = pd.read_table(input.bed)
-        bg = pd.read_table(input.bg)
-        bg_samples = bg['name samples'.split()].rename(columns={'samples': 'bg_samples'})
-        bed = pd.merge(bed, bg_samples, on='name', how='left')
-        bed['samples'] = bed['samples'] + ',' + bed['bg_samples']
-        cols = '#chrom start end name samples svtype batch'.split()
-        bed[cols].to_csv(output[0], index=False, sep='\t')

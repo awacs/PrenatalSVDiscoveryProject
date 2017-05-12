@@ -15,7 +15,11 @@ import pandas as pd
 import pysam
 
 
-def collect_splits(bam):
+class ReadLimitError(Exception):
+    """Exceeded read limit"""
+
+
+def collect_splits(bam, max_reads=1e6):
     """
     Extract soft-clipped, unique, primary alignments.
 
@@ -26,6 +30,8 @@ def collect_splits(bam):
     Parameters
     ----------
     bam : pysam.AlignmentFile
+    max_reads : int
+        
 
     Yields
     ------
@@ -44,7 +50,10 @@ def collect_splits(bam):
     def _is_soft_clipped(read):
         return any([tup[0] == 4 for tup in read.cigartuples])
 
-    for read in bam:
+    for i, read in enumerate(bam):
+        # Abort if in highly repetitive region
+        if i + 1 >= max_reads:
+            raise ReadLimitError
         if _excluded(read):
             continue
         if _is_soft_clipped(read):
@@ -105,7 +114,7 @@ class SplitStack:
             elif side == 'LEFT':
                 self.left_clips[pos].append(split)
 
-    def count_splits(self, min_splits=2):
+    def count_splits(self, min_splits=1):
         def _make_count_df(split_df):
             counts = {pos: len(deq) for pos, deq in split_df.items()}
             df = pd.DataFrame.from_dict({'count': counts})
@@ -127,14 +136,22 @@ def main():
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('sample')
-    parser.add_argument('fout', type=argparse.FileType('w'))
-    parser.add_argument('--min-splits', type=int, default=2)
+    parser.add_argument('--min-splits', type=int, default=1)
+    parser.add_argument('--max-reads', type=int, default=1e6)
     parser.add_argument('bam', type=argparse.FileType('rb'),
                         nargs='?', default=sys.stdin)
+    parser.add_argument('fout', type=argparse.FileType('w'),
+                        nargs='?', default=sys.stdout)
     args = parser.parse_args()
 
     bam = pysam.AlignmentFile(args.bam)
-    splits = collect_splits(bam)
+
+    try:
+        splits = collect_splits(bam, args.max_reads)
+    except ReadLimitError:
+        msg = 'Read limit exceeded: {0}'.format(sample)
+        sys.stderr.write(msg)
+        sys.exit(2)
 
     stack = SplitStack(splits)
     stack.map_splits()
