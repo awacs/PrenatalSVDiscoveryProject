@@ -1,16 +1,39 @@
 
 configfile: 'config.yaml'
 
+SAMPLES = {}
+with open(config['bed']) as bedfile:
+    for line in bedfile:
+        if line.startswith('#'):
+            continue
+
+        data = line.strip().split()
+        name = data[3]
+        samples = data[4]
+        SAMPLES[name] = samples
+
+VARIANTS = sorted(SAMPLES.keys())
+    
 rule all:
     input:
-        'sr_testing.w_background.bed'
+        expand('sample_lists/{name}.txt', name=VARIANTS)
 
 
 rule make_background:
+    params:
+        samples=lambda wildcards: SAMPLES[wildcards.name]
     output:
-        bed='sr_testing.background.bed'
+        bed='sample_lists/{name}.txt'
     shell:
-        "./choose_background.py {config[bed]} {config[quads]} {output}"
+        "./choose_background.py {wildcards.name} {params.samples} {config[quads]} {output}"
+
+rule make_windowed_regions:
+    input:
+        config['bed']
+    output:
+        'calls/windowed.bed'
+    run:
+        "./add_windows.py {input} {output}"
 
 rule merge_background:
     input:
