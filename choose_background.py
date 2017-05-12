@@ -16,7 +16,8 @@ import numpy as np
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('bed', type=argparse.FileType('r'))
+    parser.add_argument('name')
+    parser.add_argument('samples', help='comma-delimited')
     parser.add_argument('quadlist', type=argparse.FileType('r'))
     parser.add_argument('fout', type=argparse.FileType('w'))
     parser.add_argument('--bg-count', type=int, default=40, help='[40]')
@@ -25,27 +26,34 @@ def main():
     quads = [q.strip() for q in args.quadlist.readlines()]
 
     np.random.seed(110517)
+
+    # Add header
+    args.fout.write('name\tsample\tcall_status\n')
+
+    name = args.name
+
+    # Make list of called quads
+    samples = args.samples.split(',')
+    called_quads = sorted(set([s.split('.')[0] for s in samples]))
+
+    # Choose up to the specified number of background quads
+    bg_quads = [q for q in quads if q not in called_quads]
+    if len(bg_quads) >= args.bg_count:
+        bg_quads = np.random.choice(quads, args.bg_count, replace=False)
+
+    bg_samples = ['{0}.{1}'.format(quad, member) \
+                  for quad in bg_quads \
+                  for member in 'fa mo p1 s1'.split()]
+
+    entry = '{name}\t{sample}\t{call_status}\n'
     
-    for line in args.bed:
-        if line.startswith('#'):
-            args.fout.write(line)
-            continue
+    call_status = 'called'
+    for sample in samples:
+        args.fout.write(entry.format(**locals()))
 
-        data = line.strip().split()
-        samples = data[4].split(',')
-        called_quads = sorted(set([s.split('.')[0] for s in samples]))
-
-        bg_quads = [q for q in quads if q not in called_quads]
-        if len(bg_quads) >= args.bg_count:
-            bg_quads = np.random.choice(quads, args.bg_count, replace=False)
-
-        bg_samples = ['{0}.{1}'.format(quad, member) \
-                      for quad in bg_quads \
-                      for member in 'fa mo p1 s1'.split()]
-
-        data[4] = ','.join(bg_samples)
-        entry = '\t'.join(data)
-        args.fout.write(entry + '\n')
+    call_status = 'background'
+    for sample in bg_samples:
+        args.fout.write(entry.format(**locals()))
 
     args.fout.close()
 
