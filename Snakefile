@@ -25,8 +25,9 @@ with open(background('sr_testing.w_background.bed')) as bedfile:
         startB = start + window
         endA = end - window
         endB = end + window
-        
-        if endA >= startB:
+       
+        # Min of end window less than max of start window 
+        if endA <= startB:
             coords = '{chrom}:{startA}-{endB}'.format(**locals())
         else:
             coords = '{chrom}:{startA}-{startB} {chrom}:{endA}-{endB}'
@@ -44,7 +45,7 @@ with open(background('sr_testing.w_background.bed')) as bedfile:
         COORDS[name] = coords
 
 NAMES = sorted(COORDS.keys())
-#NAMES = ['polymorphic_cnv_3041']
+NAMES = ['polymorphic_cnv_3041']
 
 rule all:
     input:
