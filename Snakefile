@@ -44,7 +44,7 @@ with open(background('sr_testing.w_background.bed')) as bedfile:
         COORDS[name] = coords
 
 NAMES = sorted(COORDS.keys())
-NAMES = ['polymorphic_cnv_3041']
+#NAMES = ['polymorphic_cnv_3041']
 
 rule all:
     input:
