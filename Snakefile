@@ -12,7 +12,7 @@ with open(background('calls/sr_windows.txt')) as regionfile:
         REGIONS[name] = regions
 
 NAMES = sorted(REGIONS.keys())
-NAMES = ['polymorphic_cnv_3041']
+#NAMES = ['polymorphic_cnv_3041']
 
 rule all:
     input:
