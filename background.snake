@@ -1,7 +1,7 @@
 
 configfile: 'config.yaml'
 
-SAMPLES = {}
+VARIANT_SAMPLES = {}
 with open(config['bed']) as bedfile:
     for line in bedfile:
         if line.startswith('#'):
@@ -10,19 +10,21 @@ with open(config['bed']) as bedfile:
         data = line.strip().split()
         name = data[3]
         samples = data[4]
-        SAMPLES[name] = samples
+        VARIANT_SAMPLES[name] = samples
 
-VARIANTS = sorted(SAMPLES.keys())
-    
+VARIANTS = sorted(VARIANT_SAMPLES.keys())
+SAMPLES = sorted(set([s for slist in VARIANT_SAMPLES.values() 
+                        for s in slist.split(',')]))
+TEST = ['11194.p1']
+   
 rule all:
     input:
-        expand('sample_lists/{name}.txt', name=VARIANTS),
-        'calls/sr_windows.txt'
+        expand('sample_regions/{sample}.bed', sample=SAMPLES),
 
 
 rule make_background:
     params:
-        samples=lambda wildcards: SAMPLES[wildcards.name]
+        samples=lambda wildcards: VARIANT_SAMPLES[wildcards.name]
     output:
         bed='sample_lists/{name}.txt'
     shell:
@@ -36,3 +38,40 @@ rule make_windowed_regions:
     shell:
         "./add_windows.py {input} {config[window]} {output}"
 
+rule merge_sample_lists:
+    input:
+        slists=expand('sample_lists/{name}.txt', name=VARIANTS)
+    output:
+        'sample_lists/merged.txt'
+    run:
+        fout = open(output[0], 'w')
+        fout.write('name\tsample\tcall_status\n')
+        for fname in input.slists:
+            with open(fname) as slist:
+                for line in slist:
+                    if line.startswith('name'):
+                        continue
+                    fout.write(line)
+        fout.close()
+
+rule make_sample_regions:
+    input:
+        regions='calls/sr_windows.txt',
+        slist='sample_lists/merged.txt'
+    output:
+        'sample_regions/{sample}.bed'
+    shell:
+        """
+        cat {input.slist} \
+          | fgrep -w -e {wildcards.sample} \
+          | cut -f1 \
+          | fgrep -w -f - {input.regions} \
+          | cut -f3 \
+          | sed -e 's/ /\\n/g' -e 's/:/\\t/g' -e 's/-/\\t/g' \
+          | sort -k1,1V -k2,2n \
+          | bedtools merge -i stdin \
+          | awk '{{print $1":"$2"-"$3}}' \
+          > {output}
+        """
+         
+    

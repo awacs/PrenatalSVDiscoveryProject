@@ -25,8 +25,6 @@ def main():
 
     quads = [q.strip() for q in args.quadlist.readlines()]
 
-    np.random.seed(110517)
-
     # Add header
     args.fout.write('name\tsample\tcall_status\n')
 
@@ -39,7 +37,7 @@ def main():
     # Choose up to the specified number of background quads
     bg_quads = [q for q in quads if q not in called_quads]
     if len(bg_quads) >= args.bg_count:
-        bg_quads = np.random.choice(quads, args.bg_count, replace=False)
+        bg_quads = np.random.choice(bg_quads, args.bg_count, replace=False)
 
     bg_samples = ['{0}.{1}'.format(quad, member) \
                   for quad in bg_quads \
