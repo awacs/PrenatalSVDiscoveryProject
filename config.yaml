@@ -1,5 +1,5 @@
 # Input intervals to plot
-bed: sr_testing.bed
+bed: sr_testing.completed.with_bg.bed
 
 quads: ref/quads.519.list
 
