@@ -32,7 +32,8 @@ def calc_ttest(df):
     else:
         p = 1
 
-    return pd.Series([called_mu, called_sigma, bg_mu, bg_sigma, -np.log10(p)])
+    return pd.Series([called_mu, called_sigma, bg_mu, bg_sigma, 
+                      called_n, bg_n, -np.log10(p)])
 
 
 def srtest(counts):
@@ -43,7 +44,9 @@ def srtest(counts):
         1: 'called_std',
         2: 'bg_mean',
         3: 'bg_std',
-        4: 'log_pval'
+        4: 'called_n',
+        5: 'bg_n',
+        6: 'log_pval'
     }
 
     pvals = pvals.rename(columns=cols).reset_index()
@@ -55,7 +58,9 @@ def main():
     counts = pd.read_table(snakemake.input[0])
     pvals = srtest(counts)
     pvals['name'] = snakemake.wildcards.name
-    pvals.to_csv(snakemake.output[0], sep='\t', index=False)
+    cols = ('name coord dist log_pval called_mean called_std bg_mean bg_std '
+            'called_n bg_n').split()
+    pvals[cols].to_csv(snakemake.output[0], sep='\t', index=False)
 
 
 if __name__ == '__main__':
