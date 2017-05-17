@@ -33,53 +33,61 @@ def coord_dist(row):
     return variant_pos - row.pos
 
 
+def fill_missing_dists(splits, samples):
+    dists = splits['dist'].unique()
+    idx = pd.MultiIndex.from_product(iterables=[samples, dists])
+
+    splits = splits.set_index('sample dist'.split())
+    splits = splits.reindex(idx).fillna(0).astype(int).reset_index()
+    splits = splits.rename(columns=dict(level_0='sample', level_1='dist'))
+
+    return splits
+
+
 def main():
     # get list of samples called in each variant
-    bed = open(snakemake.input.bed)
-    called_keys = deque()
-    for line in bed:
-        data = line.strip().split()
-        name = data[3]
-        samples = data[4].split(',')
-        for sample in samples:
-            called_keys.append('{name}__{sample}'.format(**locals()))
 
     # Read in each dataframe (until pysam can read from S3)
-    dfs = deque()
-    prefix = snakemake.input.count_prefix
-    name = os.path.basename(prefix)
+    bed = pd.read_table(snakemake.input.bed).drop('samples', axis=1)
 
-    for sample in snakemake.params.samples:
-        fname = prefix + '__' + sample
-        df = pd.read_table(fname)
-        df['name'] = name
-        dfs.append(df)
-    df = pd.concat(dfs)
+    sample_list = pd.read_table(snakemake.input.samples)
+    samples = sample_list['sample'].unique()
 
-    # Label called samples
-    df['called_key'] = df['name'] + '__' + df['sample']
-    df.loc[df.called_key.isin(called_keys), 'call_status'] = 'called'
-    df.loc[~df.called_key.isin(called_keys), 'call_status'] = 'background'
+    names = 'pos count clip sample'.split()
+    splits = pd.read_table(snakemake.input.counts, names=names)
+    splits = splits.drop_duplicates()
+    splits = splits.loc[splits['sample'].isin(samples)].copy()
 
-    # Add call coordinates
-    bed_df = pd.read_table(snakemake.input.bed)
-    bed_df = bed_df.drop('samples', axis=1)
-    df = pd.merge(df, bed_df, on='name', how='left')
+    splits['name'] = snakemake.wildcards.name
+    splits = pd.merge(splits, bed, on='name', how='left')
 
     # Calculate distance from start/end
-    df['coord'] = df.apply(get_coord, axis=1)
-    df['dist'] = df.apply(coord_dist, axis=1)
+    splits['coord'] = splits.apply(get_coord, axis=1)
+    splits['dist'] = splits.apply(coord_dist, axis=1)
 
     # Filter by distance to appropriate coordinate.
     # Accounts for cases where a split is within the window around one
     # coordinate, but is clipped in the opposite direction
-    df = df.loc[df['dist'].abs() < snakemake.params.window].copy()
+    window = snakemake.params.window
+    splits = splits.loc[splits['dist'].abs() < window].copy()
 
-    # Output
-    df = df.drop('called_key', axis=1)
-    df['count'] = df['count'].astype(int)
-    cols = 'name sample call_status coord dist count'.split()
-    df[cols].to_csv(snakemake.output[0], index=False, sep='\t')
+    cols = 'sample coord dist count'.split()
+    splits = splits[cols].copy()
+
+    # Fill in missing samples at any pos with a split read in a sample
+    sub_splits = []
+    for coord in 'start end'.split():
+        df = splits.loc[splits.coord == coord, 'sample dist count'.split()]
+        df = fill_missing_dists(df, samples)
+        df['coord'] = coord
+        sub_splits.append(df)
+    splits = pd.concat(sub_splits)
+
+    cols = 'sample call_status'.split()
+    splits = pd.merge(splits, sample_list[cols], on='sample', how='left')
+
+    splits['name'] = snakemake.wildcards.name
+    splits.to_csv(snakemake.output[0], index=False, sep='\t')
 
 
 if __name__ == '__main__':
