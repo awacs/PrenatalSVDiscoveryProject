@@ -6,6 +6,7 @@ subworkflow background:
     snakefile: "background.snake"
 
 from collections import deque
+import os
 import numpy as np
 import pandas as pd
 
@@ -14,8 +15,9 @@ with open(config['bed']) as bedfile:
     NAMES = [line.strip().split()[3] for line in bedfile]
 #NAMES = ['polymorphic_cnv_1858188']
 
+PREFIX = os.path.splitext(os.path.basename(config['bed']))[0]
 REGIONS = {}
-with open(background('calls/sr_windows.txt')) as regionfile:
+with open(background('calls/{prefix}.sr_windows.txt'.format(prefix=PREFIX))) as regionfile:
     for line in regionfile:
         name, svtype, regions = line.strip().split('\t')
         if name in NAMES:
@@ -24,22 +26,22 @@ with open(background('calls/sr_windows.txt')) as regionfile:
 
 rule all:
     input:
-        'data/merged_pvals.txt',
-        'data/variant_stats.txt'
+        'data/{prefix}.merged_pvals.txt'.format(prefix=PREFIX),
+        'data/{prefix}.variant_stats.txt'.format(prefix=PREFIX)
         
-# rule count_splits:
-#     input:
-#         sample_list=background('sample_lists/{name}.txt')
-#     output:
-#         counts='split_counts/{name}.txt',
-#         log='count_logs/{name}.log'
-#     params:
-#         regions=lambda wildcards: REGIONS[wildcards.name],
-#     shell:
-#         """
-#         ./count_splits.sh {input.sample_list} {output.counts} {output.log} "{params.regions}"
-#         """
-# 
+rule count_splits:
+    input:
+        sample_list=background('sample_lists/{name}.txt')
+    output:
+        counts='split_counts/{name}.txt',
+        log='count_logs/{name}.log'
+    params:
+        regions=lambda wildcards: REGIONS[wildcards.name],
+    shell:
+        """
+        ./count_splits.sh {input.sample_list} {output.counts} {output.log} "{params.regions}"
+        """
+
 rule collapse_splits:
     input:
         bed=config['bed'],
@@ -64,7 +66,7 @@ rule get_variant_stats:
     input:
         config['bed']
     output:
-        'data/variant_stats.txt'
+        'data/{prefix}.variant_stats.txt'
     run:
         bed = pd.read_table(input[0])
         bed['svsize'] = bed.end - bed.start
@@ -77,9 +79,9 @@ rule get_variant_stats:
 rule combine_pvals:
     input:
         pvals=expand('pvals/{name}.txt', name=NAMES),
-        stats='data/variant_stats.txt'
+        stats='data/{prefix}.variant_stats.txt'
     output:
-        'data/merged_pvals.txt'
+        'data/{prefix}.merged_pvals.txt'
     run:
         pvals = deque()
         for pval in input.pvals:
