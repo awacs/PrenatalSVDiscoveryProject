@@ -62,6 +62,7 @@ def main():
     splits = pd.merge(splits, bed, on='name', how='left')
 
     # Calculate distance from start/end
+    splits['svtype'] = splits.svtype.str.upper()
     splits['coord'] = splits.apply(get_coord, axis=1)
     splits['dist'] = splits.apply(coord_dist, axis=1)
 
