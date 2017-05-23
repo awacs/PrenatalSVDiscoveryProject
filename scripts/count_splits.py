@@ -136,7 +136,8 @@ def load_s3bam(bucket, bam_path, filepath_index=None):
     s3 = boto3.client('s3')
     url = s3.generate_presigned_url(
             ClientMethod='get_object',
-            Params={'Bucket': bucket, 'Key': bam_path})
+            Params={'Bucket': bucket, 'Key': bam_path},
+            ExpiresIn=86400)
 
     return pysam.AlignmentFile(url, filepath_index=filepath_index)
 
@@ -186,7 +187,6 @@ def main():
         bam = bam.fetch(chrom, start, end)
 
     splits = collect_splits(bam)
-
     stack = SplitStack(splits)
     stack.map_splits()
     stack.count_splits(args.min_splits)
