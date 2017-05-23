@@ -11,15 +11,17 @@
 import argparse
 import sys
 from collections import defaultdict, deque
+import os
 import pandas as pd
 import pysam
+import boto3
 
 
 class ReadLimitError(Exception):
     """Exceeded read limit"""
 
 
-def collect_splits(bam, max_reads=1e6):
+def collect_splits(bam):
     """
     Extract soft-clipped, unique, primary alignments.
 
@@ -30,8 +32,6 @@ def collect_splits(bam, max_reads=1e6):
     Parameters
     ----------
     bam : pysam.AlignmentFile
-    max_reads : int
-        
 
     Yields
     ------
@@ -39,6 +39,7 @@ def collect_splits(bam, max_reads=1e6):
     """
 
     # Restrict to unique primary alignments with a mapped mate
+    # Equivalent to `samtools view -F 3340`
     def _excluded(read):
         return (read.is_unmapped or
                 read.mate_is_unmapped or
@@ -51,9 +52,6 @@ def collect_splits(bam, max_reads=1e6):
         return any([tup[0] == 4 for tup in read.cigartuples])
 
     for i, read in enumerate(bam):
-        # Abort if in highly repetitive region
-        if i + 1 >= max_reads:
-            raise ReadLimitError
         if _excluded(read):
             continue
         if _is_soft_clipped(read):
@@ -134,32 +132,64 @@ class SplitStack:
         self.split_counts = pd.concat([right_counts, left_counts])
 
 
+def load_s3bam(bucket, bam_path, filepath_index=None):
+    s3 = boto3.client('s3')
+    url = s3.generate_presigned_url(
+            ClientMethod='get_object',
+            Params={'Bucket': bucket, 'Key': bam_path})
+
+    return pysam.AlignmentFile(url, filepath_index=filepath_index)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('sample')
+    parser.add_argument('bam', help='Local or S3 path to bam')
     parser.add_argument('--min-splits', type=int, default=1)
-    parser.add_argument('--max-reads', type=int, default=1e6)
-    parser.add_argument('bam', type=argparse.FileType('rb'),
-                        nargs='?', default=sys.stdin)
+    parser.add_argument('--index-dir', default=None,
+                        help='Directory of local BAM indexes if accessing '
+                        'a remote S3 bam.')
+    parser.add_argument('-r', '--region',
+                        help='Tabix-formatted region to parse')
     parser.add_argument('fout', type=argparse.FileType('w'),
                         nargs='?', default=sys.stdout)
     args = parser.parse_args()
 
-    bam = pysam.AlignmentFile(args.bam)
+    bam_path = args.bam
+    if args.bam.startswith('s3://'):
+        s3path = bam_path[5:]
+        bucket = s3path.split('/')[0]
+        bam_path = '/'.join(s3path.split('/')[1:])
 
-    try:
-        splits = collect_splits(bam, args.max_reads)
-    except ReadLimitError:
-        msg = 'Read limit exceeded: {0}'.format(sample)
-        sys.stderr.write(msg)
-        sys.exit(2)
+        # Get index if possible
+        bam_name = os.path.basename(bam_path)
+        if args.index_dir is None:
+            filepath_index = None
+        else:
+            idx1 = bam_name + '.bai'
+            idx2 = os.path.splitext(bam_name)[0] + '.bai'
+            if os.path.exists(idx1):
+                filepath_index = idx1
+            elif os.path.exists(idx2):
+                filepath_index = idx2
+            else:
+                filepath_index = None
+
+        bam = load_s3bam(bucket, bam_path, filepath_index)
+    else:
+        bam = pysam.AlignmentFile(args.bam)
+
+    if args.region:
+        chrom, pos = args.region.split(':')
+        start, end = [int(x) for x in pos.split('-')]
+        bam = bam.fetch(chrom, start, end)
+
+    splits = collect_splits(bam)
 
     stack = SplitStack(splits)
     stack.map_splits()
     stack.count_splits(args.min_splits)
-    stack.split_counts['sample'] = args.sample
     stack.split_counts.to_csv(args.fout, sep='\t', index=False, header=False)
     args.fout.close()
 
