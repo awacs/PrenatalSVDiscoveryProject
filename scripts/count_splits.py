@@ -10,8 +10,9 @@
 
 import argparse
 import sys
-from collections import defaultdict, deque
 import os
+from collections import defaultdict, deque
+import numpy as np
 import pandas as pd
 import pysam
 import boto3
@@ -97,8 +98,74 @@ def get_split_position(read):
         return None, 'MIDDLE'
 
 
+def count_splits(splits, max_dist=300):
+    """
+    Count splits at each position.
+
+    splits : iter of pysam.AlignedSegment
+    max_dist : int
+        Max distance between consecutive splits before parsing
+    """
+
+    # TODO: store AlignedSegments instead of counts to pileup/pairwise align
+    #  right_clips = defaultdict(deque)
+    #  left_clips = defaultdict(deque)
+
+    right_counts = defaultdict(int)
+    left_counts = defaultdict(int)
+
+    prev_pos = None
+    curr_chrom = None
+
+    for split in splits:
+        pos, side = get_split_position(split)
+
+        # Skip middle clips, e.g. 51S65M35S
+        if pos is None:
+            continue
+
+        # Calculate distance to previous split and update position tracker
+        # Use abs to catch contig switches
+        if prev_pos is None:
+            dist = 0
+        else:
+            dist = np.abs(pos - prev_pos)
+        prev_pos = pos
+
+        if curr_chrom is None:
+            curr_chrom = split.reference_name
+
+        # Flush aggregated split reads if we've moved beyond the max dist
+        if dist > max_dist:
+            yield merge_counts(right_counts, left_counts, curr_chrom)
+
+            right_counts = defaultdict(int)
+            left_counts = defaultdict(int)
+            curr_chrom = split.reference_name
+
+        # Tally the split at its corresponding position
+        if side == 'RIGHT':
+            right_counts[pos] += 1
+        elif side == 'LEFT':
+            left_counts[pos] += 1
+
+    yield merge_counts(right_counts, left_counts, curr_chrom)
+
+
+def merge_counts(right_counts, left_counts, chrom):
+    entry = '{chrom}\t{pos}\t{clip}\t{count}'
+    entries = deque()
+
+    clips = 'left right'.split()
+    for clip, df in zip(clips, [left_counts, right_counts]):
+        for pos, count in df.items():
+            entries.append(entry.format(**locals()))
+
+    return '\n'.join(entries)
+
+
 class SplitStack:
-    def __init__(self, splits, window=50):
+    def __init__(self, splits):
         self.splits = list(splits)
 
         self.right_clips = defaultdict(deque)
@@ -187,11 +254,15 @@ def main():
         bam = bam.fetch(chrom, start, end)
 
     splits = collect_splits(bam)
-    stack = SplitStack(splits)
-    stack.map_splits()
-    stack.count_splits(args.min_splits)
-    stack.split_counts.to_csv(args.fout, sep='\t', index=False, header=False)
+    for counts in count_splits(splits):
+        args.fout.write(counts + '\n')
     args.fout.close()
+
+    #  stack = SplitStack(splits)
+    #  stack.map_splits()
+    #  stack.count_splits(args.min_splits)
+    #  stack.split_counts.to_csv(args.fout, sep='\t', index=False, header=False)
+    #  args.fout.close()
 
 
 if __name__ == '__main__':
