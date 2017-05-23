@@ -1,5 +1,7 @@
 # Input intervals to plot
 bed: sr_testing.completed.with_bg.bed
+bam_indexes: bam_indexes
+samples: ref/samples.2076.list
 
 quads: ref/quads.519.list
 
