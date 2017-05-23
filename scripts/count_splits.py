@@ -9,17 +9,12 @@
 """
 
 import argparse
-import sys
 import os
+import gzip
 from collections import defaultdict, deque
 import numpy as np
-import pandas as pd
 import pysam
 import boto3
-
-
-class ReadLimitError(Exception):
-    """Exceeded read limit"""
 
 
 def collect_splits(bam):
@@ -153,6 +148,9 @@ def count_splits(splits, max_dist=300):
 
 
 def merge_counts(right_counts, left_counts, chrom):
+    """
+    Convert counts to string for writing to file
+    """
     entry = '{chrom}\t{pos}\t{clip}\t{count}'
     entries = deque()
 
@@ -161,42 +159,8 @@ def merge_counts(right_counts, left_counts, chrom):
         for pos, count in df.items():
             entries.append(entry.format(**locals()))
 
+    entries = sorted(entries, key=lambda s: int(s.split()[1]))
     return '\n'.join(entries)
-
-
-class SplitStack:
-    def __init__(self, splits):
-        self.splits = list(splits)
-
-        self.right_clips = defaultdict(deque)
-        self.left_clips = defaultdict(deque)
-
-    def map_splits(self):
-        for split in self.splits:
-            pos, side = get_split_position(split)
-            if side == 'RIGHT':
-                self.right_clips[pos].append(split)
-            elif side == 'LEFT':
-                self.left_clips[pos].append(split)
-
-    def count_splits(self, min_splits=1):
-        def _make_count_df(split_df, clip):
-            # None objects are dropped by pd.concat
-            if len(split_df.keys()) == 0:
-                return None
-
-            # Else count by position
-            counts = {pos: len(deq) for pos, deq in split_df.items()}
-            df = pd.DataFrame.from_dict({'count': counts})
-            df = df.reset_index().rename(columns={'index': 'pos'})
-            df = df.loc[df['count'] >= min_splits]
-            df['clip'] = clip
-            return df
-
-        right_counts = _make_count_df(self.right_clips, 'right')
-        left_counts = _make_count_df(self.left_clips, 'left')
-
-        self.split_counts = pd.concat([right_counts, left_counts])
 
 
 def load_s3bam(bucket, bam_path, filepath_index=None):
@@ -220,8 +184,9 @@ def main():
                         'a remote S3 bam.')
     parser.add_argument('-r', '--region',
                         help='Tabix-formatted region to parse')
-    parser.add_argument('fout', type=argparse.FileType('w'),
-                        nargs='?', default=sys.stdout)
+    parser.add_argument('fout', help='Gzipped output')
+    #  , type=argparse.FileType('w'),
+    #                    #  nargs='?', default=sys.stdout)
     args = parser.parse_args()
 
     bam_path = args.bam
@@ -249,20 +214,20 @@ def main():
         bam = pysam.AlignmentFile(args.bam)
 
     if args.region:
-        chrom, pos = args.region.split(':')
-        start, end = [int(x) for x in pos.split('-')]
+        if ':' in args.region:
+            chrom, pos = args.region.split(':')
+            start, end = [int(x) for x in pos.split('-')]
+        else:
+            chrom = args.region
+            start = end = None
         bam = bam.fetch(chrom, start, end)
 
     splits = collect_splits(bam)
+    fout = gzip.open(args.fout, 'wb')
     for counts in count_splits(splits):
-        args.fout.write(counts + '\n')
-    args.fout.close()
-
-    #  stack = SplitStack(splits)
-    #  stack.map_splits()
-    #  stack.count_splits(args.min_splits)
-    #  stack.split_counts.to_csv(args.fout, sep='\t', index=False, header=False)
-    #  args.fout.close()
+        entry = (counts + '\n').encode('utf-8')
+        fout.write(entry)
+    fout.close()
 
 
 if __name__ == '__main__':
