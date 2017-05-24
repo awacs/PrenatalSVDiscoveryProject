@@ -1,8 +1,11 @@
 # Input intervals to plot
 bed: sr_testing.completed.with_bg.bed
 bam_indexes: bam_indexes
-samples: ref/samples.2076.list
 
+samples: ref/samples.692.g1.list
+chroms: ref/chroms.all.list
+# samples: ref/samples.test.list
+# chroms: ref/chroms.test.list
 quads: ref/quads.519.list
 
 window: 250
