@@ -39,6 +39,6 @@ rule count_splits:
         fout=$(readlink -f {output});
         count_splits=$(readlink -f scripts/count_splits.py);
         cd {params.index_dir};
-        $count_splits -z -r {wildcards.chrom} $(s3bam {wildcards.sample}) stdin \
+        $count_splits -r {wildcards.chrom} $(s3bam {wildcards.sample}) stdin \
           | bgzip -c > $fout
         """
