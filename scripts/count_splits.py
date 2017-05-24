@@ -10,11 +10,14 @@
 
 import argparse
 import os
+import sys
 import gzip
 from collections import defaultdict, deque
 import numpy as np
 import pysam
 import boto3
+from helpers import is_excluded, is_soft_clipped
+import helpers
 
 
 def collect_splits(bam):
@@ -34,24 +37,21 @@ def collect_splits(bam):
     read : pysam.AlignedSegment
     """
 
-    # Restrict to unique primary alignments with a mapped mate
-    # Equivalent to `samtools view -F 3340`
-    def _excluded(read):
-        return (read.is_unmapped or
-                read.mate_is_unmapped or
-                read.is_secondary or
-                read.is_duplicate or
-                read.is_supplementary)
-
-    # Soft clip indicate a candidate split read
-    def _is_soft_clipped(read):
-        return any([tup[0] == 4 for tup in read.cigartuples])
-
-    for i, read in enumerate(bam):
-        if _excluded(read):
+    for read in bam:
+        # Restrict to unique primary alignments with a mapped mate
+        # Equivalent to `samtools view -F 3340`
+        if is_excluded(read):
             continue
-        if _is_soft_clipped(read):
+        # Soft clip indicate a candidate split read
+        if is_soft_clipped(read):
             yield read
+
+
+def new_get_split_position(read):
+    direction = helpers.get_clip_direction(read)
+    pos = helpers.get_clip_position(read, direction)
+
+    return pos, direction
 
 
 def get_split_position(read):
@@ -151,16 +151,18 @@ def merge_counts(right_counts, left_counts, chrom):
     """
     Convert counts to string for writing to file
     """
-    entry = '{chrom}\t{pos}\t{clip}\t{count}'
+    #  entry = '{chrom}\t{pos}\t{clip}\t{count}'
+    entry = '%s\t%d\t%s\t%d'
     entries = deque()
 
     clips = 'left right'.split()
     for clip, df in zip(clips, [left_counts, right_counts]):
         for pos, count in df.items():
-            entries.append(entry.format(**locals()))
+            entries.append((chrom, pos, clip, count))
 
-    entries = sorted(entries, key=lambda s: int(s.split()[1]))
-    return '\n'.join(entries)
+    entries = sorted(entries, key=lambda s: s[1])
+
+    return '\n'.join([entry % s for s in entries])
 
 
 def load_s3bam(bucket, bam_path, filepath_index=None):
@@ -184,7 +186,9 @@ def main():
                         'a remote S3 bam.')
     parser.add_argument('-r', '--region',
                         help='Tabix-formatted region to parse')
-    parser.add_argument('fout', help='Gzipped output')
+    parser.add_argument('fout', help='Output file.')
+    parser.add_argument('-z', '--gzip', default=False, action='store_true',
+                        help='Gzip output')
     #  , type=argparse.FileType('w'),
     #                    #  nargs='?', default=sys.stdout)
     args = parser.parse_args()
@@ -222,11 +226,24 @@ def main():
             start = end = None
         bam = bam.fetch(chrom, start, end)
 
-    splits = collect_splits(bam)
-    fout = gzip.open(args.fout, 'wb')
+    # Open output file
+    if args.gzip:
+        fout = gzip.open(args.fout, 'wb')
+    elif args.fout in '- stdin'.split():
+        fout = sys.stdout
+    else:
+        fout = open(args.fout, 'w')
+
+    # Get splits and pile up
+    splits = helpers.collect_splits(bam)
     for counts in count_splits(splits):
-        entry = (counts + '\n').encode('utf-8')
+        entry = counts + '\n'
+        # gzip requires bytes
+        if args.gzip:
+            entry = entry.encode('utf-8')
+
         fout.write(entry)
+
     fout.close()
 
 
