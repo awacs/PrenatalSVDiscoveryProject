@@ -8,6 +8,7 @@ configfile: 'config.yaml'
 
 include: 'rules/pesr_preprocessing.rules'
 include: 'rules/depth_preprocessing.rules'
+include: 'rules/preprocessing_qc.rules'
 
 with open(config['quads']) as qlist:
     QUADS = [q.strip() for q in qlist.readlines()]
@@ -19,6 +20,8 @@ rule all:
     input:
         expand('filtered_vcfs/{source}.{quad}.vcf.gz',
                source=PESR_SOURCES, quad=QUADS),
+        'qc/aggregate/raw_counts.txt',
+        'qc/aggregate/filtered_counts.txt',
     output:
         touch('all.done')
 
