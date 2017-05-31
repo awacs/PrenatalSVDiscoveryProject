@@ -34,7 +34,7 @@ class CNV:
 
     def choose_background(self, samples, n_background):
         """
-        Choose background samples 
+        Choose background samples
 
         Parameters
         ----------
@@ -105,7 +105,7 @@ class CNV:
         }
         counts['coord'] = counts['clip'].replace(COORD_MAP[self.svtype])
 
-        # Filter to within window 
+        # Filter to within window
         # (excludes spurious left/right clips at other coord)
         self.add_dists(counts)
         counts = counts.loc[counts['dist'].abs() <= window].copy()
@@ -139,7 +139,7 @@ class CNV:
         cols = 'sample pos count'.split()
         for coord in 'start end'.split():
             df = counts.loc[counts.coord == coord, cols]
-        
+
             # Consider only positions found in a called sample
             pos = df.loc[df['sample'].isin(self.samples), 'pos']
             pos = pos.unique()
@@ -167,7 +167,7 @@ class CNV:
             5: 'bg_n',
             6: 'log_pval'
         }
-    
+
         self.pvals = pvals.rename(columns=cols).reset_index()
 
     def choose_best_coords(self):
@@ -206,22 +206,18 @@ class CNV:
 
         called = df.loc[df.call_status == 'called', 'count']
         called_mu, called_sigma, called_n = _summary_stats(called)
-    
+
         background = df.loc[df.call_status == 'background', 'count']
         bg_mu, bg_sigma, bg_n = _summary_stats(background)
-   
+
         t, _p = ss.ttest_ind_from_stats(called_mu, called_sigma, called_n,
                                         bg_mu, bg_sigma, bg_n)
 
         # One-sided test
         p = _p / 2 if t > 0 else 1
-    
-        return pd.Series([called_mu, called_sigma, bg_mu, bg_sigma, 
-                          called_n, bg_n, -np.log10(p)])
 
-    def __str__(self):
-        entry = '{0}\t{1}\t{2}\t{3}\t{4}\t{5}'
-        return entry.format(chrom, start, end, name, ','.join(samples), svtype)
+        return pd.Series([called_mu, called_sigma, bg_mu, bg_sigma,
+                          called_n, bg_n, -np.log10(p)])
 
 
 def BedParser(bedfile):
@@ -243,7 +239,7 @@ class SRTest():
         n_background : int
             Number of background samples to choose for comparison in t-test
         """
-       
+
         self.cnvs = BedParser(bed)
         self.countfile = countfile
         self.samples = sorted(samples)
@@ -267,7 +263,7 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('bed', help='Bed of CNV calls. First six columns: '
                         'chrom,start,end,name,samples,svtype')
-    parser.add_argument('samples', help='Single column file of all sample IDs.')
+    parser.add_argument('samples', help='File listing all sample IDs.')
     parser.add_argument('counts', help='Tabix indexed file of split counts. '
                         'Columns: chrom,pos,clip,count,sample')
     parser.add_argument('fout', help='Output table of most significant start/'
@@ -289,7 +285,7 @@ def main():
 
     srtest = SRTest(bed, samples, countfile, args.window, args.background)
     srtest.run()
-    srtest.pvals.to_csv(args.fout, sep='\t', index=False)   
+    srtest.pvals.to_csv(args.fout, sep='\t', index=False)
 
 
 if __name__ == '__main__':
