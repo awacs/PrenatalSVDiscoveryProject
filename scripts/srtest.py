@@ -26,8 +26,8 @@ class CNV:
         self.samples = samples.split(',')
         self.svtype = svtype.upper()
 
-        if svtype not in 'DEL DUP'.split():
-            msg = 'Invalid SV type: {0} [expected DEL,DUP]'.format(svtype)
+        if self.svtype not in 'DEL DUP'.split():
+            msg = 'Invalid SV type: {0} [expected DEL,DUP]'.format(self.svtype)
             raise Exception(msg)
 
         self.background = []
@@ -47,7 +47,7 @@ class CNV:
         self.background = [s for s in samples if s not in self.samples]
         if len(self.background) >= n_background:
             self.background = np.random.choice(self.background, n_background,
-                                               replace=False)
+                                               replace=False).tolist()
 
     def load_counts(self, countfile, window):
         """
@@ -117,8 +117,10 @@ class CNV:
 
         # Label samples with background
         is_called = self.split_counts['sample'].isin(self.samples)
-        self.split_counts.loc[is_called, 'call_status'] = 'called'
-        self.split_counts.loc[~is_called, 'call_status'] = 'background'
+        if is_called.any():
+            self.split_counts.loc[is_called, 'call_status'] = 'called'
+        if (~is_called).any():
+            self.split_counts.loc[~is_called, 'call_status'] = 'background'
 
     def add_dists(self, df):
         # Get distance of clip position from variant start/end
@@ -180,6 +182,14 @@ class CNV:
         pvals = pvals.loc[pvals.log_pval == pvals.max_pval].copy()
         pvals = pvals.drop('max_pval', axis=1)
 
+        for coord in 'start end'.split():
+            if coord not in pvals.coord.values:
+                try:
+                    pvals = pd.concat([pvals, self.null_series(coord)])
+                except:
+                    import ipdb
+                    ipdb.set_trace()
+
         # Use distance as tiebreaker
         if pvals.shape[0] > 2:
             self.add_dists(pvals)
@@ -196,8 +206,26 @@ class CNV:
         self.choose_background(samples, n_background)
         self.load_counts(countfile, window)
         self.process_counts(window)
-        self.ttest_counts()
-        self.choose_best_coords()
+
+        if self.split_counts.shape[0] == 0:
+            self.null_score()
+        else:
+            self.ttest_counts()
+            self.choose_best_coords()
+
+    def null_score(self):
+        cols = ('coord pos called_mean called_std bg_mean bg_std called_n '
+                'bg_n log_pval name').split()
+        self.best_pvals = pd.DataFrame([
+            ['end', 0, 0, 0, 0, 0, 0, 0, 0, self.name],
+            ['start', 0, 0, 0, 0, 0, 0, 0, 0, self.name]],
+            columns=cols)
+
+    def null_series(self, coord):
+        cols = ('coord pos called_mean called_std bg_mean bg_std called_n '
+                'bg_n log_pval name').split()
+        return pd.DataFrame([[coord, 0, 0, 0, 0, 0, 0, 0, 0, self.name]],
+                            columns=cols)
 
     @staticmethod
     def calc_ttest(df):
@@ -210,11 +238,14 @@ class CNV:
         background = df.loc[df.call_status == 'background', 'count']
         bg_mu, bg_sigma, bg_n = _summary_stats(background)
 
-        t, _p = ss.ttest_ind_from_stats(called_mu, called_sigma, called_n,
-                                        bg_mu, bg_sigma, bg_n)
+        if bg_n == 0:
+            p = 1
+        else:
+            t, _p = ss.ttest_ind_from_stats(called_mu, called_sigma, called_n,
+                                            bg_mu, bg_sigma, bg_n)
 
-        # One-sided test
-        p = _p / 2 if t > 0 else 1
+            # One-sided test
+            p = _p / 2 if t > 0 else 1
 
         return pd.Series([called_mu, called_sigma, bg_mu, bg_sigma,
                           called_n, bg_n, -np.log10(p)])
@@ -254,14 +285,22 @@ class SRTest():
                         self.window)
             pvals.append(cnv.best_pvals)
 
-        self.pvals = pd.concat(pvals)
+        pvals = pd.concat(pvals)
+
+        cols = ('name coord pos log_pval called_mean called_std bg_mean '
+                'bg_std called_n bg_n').split()
+        self.pvals = pvals[cols].fillna(0)
+
+        for col in 'pos called_n bg_n'.split():
+            self.pvals[col] = self.pvals[col].astype(int)
 
 
 def main():
     parser = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('bed', help='Bed of CNV calls. First six columns: '
+    parser.add_argument('bed', type=argparse.FileType('r'),
+                        help='Bed of CNV calls. First six columns: '
                         'chrom,start,end,name,samples,svtype')
     parser.add_argument('samples', help='File listing all sample IDs.')
     parser.add_argument('counts', help='Tabix indexed file of split counts. '
@@ -276,14 +315,12 @@ def main():
                         'comparison in t-test [160]')
     args = parser.parse_args()
 
-    bed = open(args.bed)
-
     with open(args.samples) as slist:
         samples = [s.strip() for s in slist.readlines()]
 
     countfile = pysam.TabixFile(args.counts)
 
-    srtest = SRTest(bed, samples, countfile, args.window, args.background)
+    srtest = SRTest(args.bed, samples, countfile, args.window, args.background)
     srtest.run()
     srtest.pvals.to_csv(args.fout, sep='\t', index=False)
 
