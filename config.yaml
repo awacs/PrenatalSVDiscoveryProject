@@ -43,5 +43,8 @@ pesr_cohort_integration:
 
     
 RdTest:
-    gt_script: /data/talkowski/Samples/SFARI/GenotypeCNV/RdTest.R
-    bincov: /data/talkowski/Samples/SFARI/deep_sv/asc_540/bincov/matrices/ASC540.all.binCov.raw.bed
+    gt_script: scripts/RdTest.R
+    covfile: /data/talkowski/Samples/SFARI/deep_sv/asc_540/bincov/matrices/ASC540.all.binCov.raw.bed.gz
+    medianfile: /data/talkowski/Samples/SFARI/deep_sv/asc_540/bincov/matrices/ASC540.all.binCov.median
+    famfile: /data/talkowski/Samples/SFARI/lists/SFARI_Real.fam
+    blacklist: /data/talkowski/Samples/SFARI/lists/SFARI.pilot.IDs.txt

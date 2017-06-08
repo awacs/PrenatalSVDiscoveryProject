@@ -11,22 +11,31 @@ def rdtest_bed(wildcards):
         path = 'integration/pesr/rdtest_beds/{source}/cohort.{chrom}.bed'
     return path.format(**wildcards)
 
+print(module_config)
+
 rule RdTest:
     input:
         bed=rdtest_bed
+    params:
+        **module_config
     output:
         pk='rdtest/{source}/cohort.{chrom}.bed.pk',
         zrank='rdtest/{source}/cohort.{chrom}.bed_HomPowerPZRank.txt',
     shell:
-        """
-        cp {input.bed} {output.pk};
-        cp {input.bed} {output.zrank};
-        """
+         """
+         Rscript {params.gt_script} \
+           -b {input.bed} \
+           -o rdtest/{wildcards.source} \
+           -n cohort.{wildcards.chrom}.bed \
+           -c {params.covfile} \
+           -m {params.medianfile} \
+           -f {params.famfile} \
+           -l {params.blacklist} \
+           > /dev/null;
+         """
         # """
-        # Rscript {module_config[gt_script]} -b {input.bed} \
-        #   -c {module_config[bincov]} \
-        #   -o cohort.{wildcards.chrom}.bed -v TRUE -g NULL \
-        #   -j rdtest/{wildcards.source}/ > /dev/null;
+        # cp {input.bed} {output.pk};
+        # cp {input.bed} {output.zrank};
         # """
 
 rule rdtest_filter:
