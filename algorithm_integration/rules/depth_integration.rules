@@ -18,7 +18,7 @@ rule bedcluster:
         bed='depth/bedcluster/{batch}.{svtype}.{chrom}.bed'
     params:
         prefix=variant_prefix,
-        frac=0.8
+        **config['bedcluster']
     shell:
         """
         svtools bedcluster {input.bed} -r {wildcards.chrom} \

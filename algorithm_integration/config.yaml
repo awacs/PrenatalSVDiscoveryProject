@@ -1,20 +1,25 @@
+# Key
 batches: ref/batch.key
-groups: ref/quads.test.list
-samples: ref/samples.test.list
-chroms: ref/chroms.test2.list
 
+# Subsets to analyze
+groups: ref/quads.test.list
+chroms: ref/chroms.test2.list
 pesr_sources:
     - delly
     - lumpy
     - manta
     - wham
-
 cnv_types:
     - DEL
     - DUP
 
+# PE/SR clustering parameters
 vcfcluster:
     min_recip_frac: 0.1
     min_dist: 300
     min_svsize: 0
     blacklist: ref/b37.lumpy.exclude.4-13.bed.gz
+
+# Depth clustering parameters
+bedcluster:
+    frac: 0.8

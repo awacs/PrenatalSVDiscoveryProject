@@ -8,15 +8,11 @@ PESR_SOURCES = config['pesr_sources']
 SOURCES = PESR_SOURCES + ['depth']
 CNV = config['cnv_types']
 
-with open(config['samples']) as slist:
-    SAMPLES = [s.strip() for s in slist.readlines()]
-
 with open(config['chroms']) as clist:
     CHROMS = [c.strip() for c in clist.readlines()]
 
 wildcard_constraints:
     source='(' + '|'.join(SOURCES) + ')',
-    sample='(' + '|'.join(SAMPLES) + ')',
     svtype='(' + '|'.join(CNV) + ')',
     chrom='(' + '|'.join(CHROMS) + ')'
 
