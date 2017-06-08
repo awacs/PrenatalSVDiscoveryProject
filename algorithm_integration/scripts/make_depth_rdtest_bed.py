@@ -5,9 +5,11 @@
 # Distributed under terms of the MIT license.
 
 """
-
+Convert bedcluster output to RdTest format
 """
 
+import argparse
+import sys
 import pandas as pd
 
 
@@ -27,15 +29,21 @@ def make_depth_rdtest_bed(svof):
     cols = '#chrom start end name samples svtype'.split()
     return bed[cols]
 
+
 def main():
-    #  dels = pd.read_table(snakemake.input.dels)
-    #  dups = pd.read_table(snakemake.input.dups)
-    #  svof = pd.concat([dels, dups]).sort_values('start')
-    clustered = pd.read_table(snakemake.input.bed)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('bed', help='Input BED')
+    parser.add_argument('fout', help='Output BED', type=argparse.FileType('w'),
+                        default=sys.stdout, nargs='?')
+    args = parser.parse_args()
+
+    clustered = pd.read_table(args.bed)
 
     bed = make_depth_rdtest_bed(clustered)
 
-    bed.to_csv(snakemake.output[0], sep='\t', index=False)
+    bed.to_csv(args.fout, sep='\t', index=False)
 
 if __name__ == '__main__':
     main()
