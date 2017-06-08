@@ -8,6 +8,7 @@ logs/*
 preprocessing/*
 integration/*
 rdtest/*
+bca/*
 
 # Or symlinks to data
 data
@@ -23,3 +24,6 @@ data
 # Ignore RdTest temp files
 batch1_p1
 pilot_p1
+
+# Ignore scrap files
+test*
