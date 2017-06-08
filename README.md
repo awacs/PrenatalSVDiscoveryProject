@@ -139,6 +139,14 @@ subgroups).
     List of SV classes to consider when combining PE/SR variants. (Default:
 DEL,DUP,INV,BND)
 
+* `cnv_types`: list of strings  
+    List of SV classes to consider when combining depth variants. (Default:
+DEL,DUP)
+
+* `chroms`: filepath
+    List of chromosomes to consider. Integration and filtering will be
+parallelized by chromosome.
+
 ---
 <p align="center"> Reliable documentation ends here </p>
 
