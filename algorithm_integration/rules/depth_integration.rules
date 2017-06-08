@@ -1,0 +1,48 @@
+"""
+depth_integration.rules
+Matthew Stone
+
+Merge depth caller CNV across programs and samples.
+"""
+
+CNV = config['cnv_types']
+
+def variant_prefix(wildcards):
+    return 'depth_{0}_{1}'.format(wildcards.svtype, wildcards.chrom)
+
+# Cluster CNV calls
+rule bedcluster:
+    input:
+        bed='preprocessing/std_beds/cohort.{svtype}.bed.gz'
+    output:
+        bed='integration/depth/bedcluster/cohort_split.{svtype}.{chrom}.bed'
+    params:
+        prefix=variant_prefix,
+        frac=0.8
+    shell:
+        """
+        svtools bedcluster {input.bed} -r {wildcards.chrom} \
+            -p {params.prefix} -f {params.frac} --merge-coordinates > {output}
+        """
+
+# Merge DEL and DUP calls
+rule merge_across_svtypes:
+    input:
+        expand(rules.bedcluster.output.bed, svtype=CNV, chrom='{chrom}')
+    output:
+        bed='integration/depth/bedcluster/cohort.{chrom}.bed'
+    shell:
+        """
+        head -n1 {input[0]} > {output};
+        for f in {input}; do sed '1d' $f | sort -k1,1V -k2,2n >> {output}; done
+        """
+
+# Aggregate observations into variants and convert to RdTest format
+rule make_depth_rdtest_bed:
+    input:
+        bed=rules.merge_across_svtypes.output.bed
+    output:
+        'integration/depth/rdtest_beds/cohort.{chrom}.bed'
+    script:
+        "scripts/make_depth_rdtest_beds.py"
+
