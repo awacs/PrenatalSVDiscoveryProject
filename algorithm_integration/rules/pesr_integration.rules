@@ -1,40 +1,50 @@
 """
-pesr.snake
+pesr_integration.rules
 Matthew Stone <mstone5@mgh.harvard.edu>
 
 Cluster SV called by PE/SR-based algorithms. 
 """
 
-module_config = config['pesr_alg_integration']
+import pandas as pd
 
-SOURCES = config['pesr_sources']
+with open(config['groups']) as glist:
+    GROUPS = [g.strip() for g in glist.readlines()]
 
-with open(config['chroms']) as clist:
-    CHROMS = [c.strip() for c in clist.readlines()]
+BATCH_KEY = pd.read_table(config['batches'], dtype=str)
+BATCHES = sorted(BATCH_KEY.batch.unique())
 
-with open(config['quads']) as qlist:
-    QUADS = [q.strip() for q in qlist.readlines()]
+# Samples are processed in subgroups of each batch
+def get_batch_vcfs(wildcards):
+    batch = wildcards.batch
+    groups = BATCH_KEY.loc[BATCH_KEY.batch == batch, 'group'].unique()
+    groups = [g for g in groups if g in GROUPS]
+    
+    vcf_path = 'pesr/input_vcfs/{source}.{group}.vcf.gz'
 
-rule make_alg_vcf_list:
+    return [vcf_path.format(source=wildcards.source, group=group) 
+            for group in groups]
+
+# Make list of VCFs for each batch/source combo
+rule make_vcf_list:
     input:
-        expand('preprocessing/filtered_vcfs/{{source}}.{quad}.vcf.gz',
-               quad=QUADS)
+        get_batch_vcfs
     output:
-        vcflist='integration/pesr/vcflists/vcfs.{source}.list'
+        vcflist='pesr/vcflists/{batch}.{source}.list'
     run:
         with open(output[0], 'w') as fout:
             for fname in sorted(input):
                 fout.write(fname + '\n')
 
-rule vcfcluster_by_alg:
+# Cluster all VCFs in a batch from a given algorithm
+rule vcfcluster:
     """Cluster calls from a single algorithm across samples."""
     input:
-        vcflist=rules.make_alg_vcf_list.output.vcflist
+        vcflist=rules.make_vcf_list.output.vcflist
     output:
-        vcf='integration/pesr/vcfcluster/{source}/cohort.{chrom}.vcf',
+        vcf='pesr/vcfcluster/{batch}.{source}.{chrom}.vcf',
     params:
-        **module_config['vcfcluster'],
-        prefix=lambda wildcards: 'cohort.{0}'.format(wildcards.source)
+        **config['vcfcluster'],
+        prefix=lambda wildcards: '{0}.{1}'.format(wildcards.batch, wildcards.source)
     shell:
         """
         svtools vcfcluster {input} {output.vcf} \
@@ -46,10 +56,11 @@ rule vcfcluster_by_alg:
             -x {params.blacklist}
         """
 
+# Convert to RdTest format
 rule make_pesr_rdtest_beds:
     input:
-        vcf=rules.vcfcluster_by_alg.output.vcf
+        vcf=rules.vcfcluster.output.vcf
     output:
-        bed='integration/pesr/rdtest_beds/{source}/cohort.{chrom}.bed'
+        bed='pesr/rdtest_beds/{batch}.{source}.{chrom}.bed'
     shell:
         "./scripts/make_pesr_rdtest_bed.py {input} {output}"
