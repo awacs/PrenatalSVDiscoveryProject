@@ -140,7 +140,7 @@ subgroups).
 DEL,DUP,INV,BND)
 
 ---
-<center> Reliable documentation ends here </center>
+<p align="center"> Reliable documentation ends here </p>
 
 ---
 
