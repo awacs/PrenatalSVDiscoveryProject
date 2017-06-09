@@ -27,3 +27,8 @@ pilot_p1
 
 # Ignore scrap files
 test*
+
+# Ignore algorithm integration data directories
+algorithm_integration/depth/*
+algorithm_integration/pesr/*
+

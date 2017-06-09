@@ -3,14 +3,14 @@
 SOURCES = config['pesr_sources']
 SVTYPES = config['svtypes']
 
-with open(config['quads']) as qlist:
-    QUADS = [q.strip() for q in qlist.readlines()]
+with open(config['groups']) as glist:
+    GROUPS = [g.strip() for g in glist.readlines()]
 
 rule standardize_vcf:
     input:
-        'data/raw_vcfs/{source}/{source}.{quad}.vcf.gz'
+        'data/raw_vcfs/{source}/{source}.{group}.vcf.gz'
     output:
-        vcf='std_vcfs/{source}.{quad}.vcf'
+        vcf='std_vcfs/{source}.{group}.vcf'
     shell:
         """
         svtools standardize {input} {output} {wildcards.source}
@@ -18,7 +18,7 @@ rule standardize_vcf:
 
 rule identify_vcf_outliers:
     input:
-        expand(rules.standardize_vcf.output.vcf, quad=QUADS, source='{source}')
+        expand(rules.standardize_vcf.output.vcf, group=GROUPS, source='{source}')
     output:
         outliers='outliers/{source}.list'
     params:
@@ -31,7 +31,7 @@ rule remove_vcf_outliers:
         vcf=rules.standardize_vcf.output.vcf,
         outliers=rules.identify_vcf_outliers.output.outliers
     output:
-        vcf=temp('filtered_vcfs/{source}.{quad}.vcf')
+        vcf=temp('filtered_vcfs/{source}.{group}.vcf')
     script:
         "scripts/remove_outliers.py"
 
@@ -39,8 +39,8 @@ rule sort_vcfs:
     input:
         vcf=rules.remove_vcf_outliers.output.vcf
     output:
-        vcf='filtered_vcfs/{source}.{quad}.vcf.gz',
-        idx='filtered_vcfs/{source}.{quad}.vcf.gz.tbi',
+        vcf='filtered_vcfs/{source}.{group}.vcf.gz',
+        idx='filtered_vcfs/{source}.{group}.vcf.gz.tbi',
     shell:
         """
         vcf-sort -c {input} | bgzip -c > {output.vcf};

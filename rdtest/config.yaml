@@ -1,0 +1,17 @@
+# Key
+batches: ref/batch.key
+
+# Subsets to analyze
+groups: ref/quads.test.list
+chroms: ref/chroms.test2.list
+pesr_sources:
+    - delly
+    - lumpy
+    - manta
+    - wham
+
+# RdTest parameters
+rdtest: scripts/RdTest.R
+coveragefile: /data/talkowski/Samples/SFARI/deep_sv/asc_540/bincov/matrices/ASC540.all.binCov.raw.bed.gz
+medianfile: /data/talkowski/Samples/SFARI/deep_sv/asc_540/bincov/matrices/ASC540.all.binCov.median
+famfile: /data/talkowski/Samples/SFARI/lists/SFARI_Real.fam

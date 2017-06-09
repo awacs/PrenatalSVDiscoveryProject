@@ -1,37 +1,20 @@
 
-module_config = config['RdTest']
-
-with open(config['chroms']) as clist:
-    CHROMS = [c.strip() for c in clist.readlines()]
-
-def rdtest_bed(wildcards):
-    if wildcards.source == 'depth':
-        path = 'integration/depth/rdtest_beds/cohort.{chrom}.bed'
-    else:
-        path = 'integration/pesr/rdtest_beds/{source}/cohort.{chrom}.bed'
-    return path.format(**wildcards)
-
-print(module_config)
-
+# TODO: generate blacklist from batch key
 rule RdTest:
     input:
-        bed=rdtest_bed
-    params:
-        **module_config
+        bed='input_beds/{batch}.{source}.{chrom}.bed'
     output:
-        pk='rdtest/{source}/cohort.{chrom}.bed.pk',
-        zrank='rdtest/{source}/cohort.{chrom}.bed_HomPowerPZRank.txt',
+        pk='rdtest/{batch}.{source}.{chrom}.bed.pk',
+        zrank='rdtest/{batch}.{source}.{chrom}.bed_HomPowerPZRank.txt',
     shell:
          """
-         Rscript {params.gt_script} \
+         Rscript {config[rdtest]} \
            -b {input.bed} \
-           -o rdtest/{wildcards.source} \
-           -n cohort.{wildcards.chrom}.bed \
-           -c {params.covfile} \
-           -m {params.medianfile} \
-           -f {params.famfile} \
-           -l {params.blacklist} \
-           > /dev/null;
+           -o rdtest/ \
+           -n {wildcards.batch}.{wildcards.source}.{wildcards.chrom}.bed \
+           -c {config[coveragefile]} \
+           -m {config[medianfile]} \
+           -f {config[famfile]}
          """
         # """
         # cp {input.bed} {output.pk};
