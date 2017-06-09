@@ -8,12 +8,14 @@ with open(config['idmap']) as idmapf:
     idkeys = [line.strip().split() for line in idmapf]
     ID_MAP = dict(idkeys)
 
-with open(config['samples']) as slist:
-    SAMPLES = [s.strip() for s in slist.readlines()]
-
-# Filter ID map to samples of interest
-ID_MAP = {k: v for k, v in ID_MAP.items() if k in SAMPLES}
 SOURCES = config['depth_sources']
+
+import pandas as pd
+
+BATCH_KEY = pd.read_table(config['batches'], dtype=str)
+
+with open(config['groups']) as glist:
+    GROUPS = [g.strip() for g in glist.readlines()]
 
 
 def raw_cnmops_allosomal(wildcards):
@@ -124,12 +126,18 @@ rule caller_coverage:
             > {output}
         """
 
+def get_batched_depth_calls(wildcards):
+    samples = BATCH_KEY.loc[(BATCH_KEY.batch == wildcards.batch) &
+                            BATCH_KEY['group'].isin(GROUPS), 'sample']
+    return expand(rules.caller_coverage.output.bed,
+                  sample=samples, svtype='{svtype}')
+
 rule concat_merged_depth_calls:
     input:
-        expand(rules.caller_coverage.output.bed, sample=SAMPLES, svtype='{svtype}')
+        get_batched_depth_calls
     output:
-        bed='std_beds/cohort.{svtype}.bed.gz',
-        idx='std_beds/cohort.{svtype}.bed.gz.tbi',
+        bed='std_beds/{batch}.{svtype}.bed.gz',
+        idx='std_beds/{batch}.{svtype}.bed.gz.tbi',
     shell:
         """
         cat {input} \

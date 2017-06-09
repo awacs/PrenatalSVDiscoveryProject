@@ -10,18 +10,25 @@ include: 'rules/pesr_preprocessing.rules'
 include: 'rules/depth_preprocessing.rules'
 include: 'rules/preprocessing_qc.rules'
 
-with open(config['quads']) as qlist:
-    QUADS = [q.strip() for q in qlist.readlines()]
+import pandas as pd
+
+BATCH_KEY = pd.read_table(config['batches'], dtype=str)
+BATCHES = sorted(BATCH_KEY.batch.unique())
+
+with open(config['groups']) as glist:
+    GROUPS = [g.strip() for g in glist.readlines()]
 
 PESR_SOURCES = config['pesr_sources']
 CNV = config['cnv_types']
 
 rule all:
     input:
-        expand('filtered_vcfs/{source}.{quad}.vcf.gz',
-               source=PESR_SOURCES, quad=QUADS),
+        expand('filtered_vcfs/{source}.{group}.vcf.gz',
+               source=PESR_SOURCES, group=GROUPS),
         'qc/aggregate/raw_counts.txt',
         'qc/aggregate/filtered_counts.txt',
+        expand('std_beds/{batch}.{svtype}.bed.gz',
+               batch=BATCHES, svtype=CNV)
     output:
         touch('all.done')
 
