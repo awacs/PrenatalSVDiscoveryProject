@@ -94,9 +94,10 @@ $ snakemake clean
 The pipeline consists of multiple independent modules. Documentation of each
 module is provided in the respective subdirectory.
 
-0. Preprocessing (optional, not intended for all users)
-1. Algorithm integration
-2. RD-test
+0. [Preprocessing](preprocessing/README.md)
+   (optional, not intended for all users)
+1. [Algorithm integration](algorithm_integration/README.md)
+2. [RD-test](rdtest/README.md)
 3. SR-test
 
 ## Rolling your own preprocessing
