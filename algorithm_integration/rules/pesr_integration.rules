@@ -44,7 +44,7 @@ rule vcfcluster:
         vcf='pesr/vcfcluster/{batch}.{source}.{chrom}.vcf',
     params:
         **config['vcfcluster'],
-        prefix=lambda wildcards: '{0}.{1}'.format(wildcards.batch, wildcards.source)
+        prefix=lambda wildcards: '{0}_{1}'.format(wildcards.batch, wildcards.source)
     shell:
         """
         svtools vcfcluster {input} {output.vcf} \
