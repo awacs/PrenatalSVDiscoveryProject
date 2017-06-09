@@ -22,7 +22,10 @@ rule bedcluster:
     shell:
         """
         svtools bedcluster {input.bed} -r {wildcards.chrom} \
-            -p {params.prefix} -f {params.frac} --merge-coordinates > {output}
+          -p {params.prefix} \
+          -f {params.frac} \
+          {params.flags} \
+          > {output}
         """
 
 # Aggregate observations into variants and convert to RdTest format

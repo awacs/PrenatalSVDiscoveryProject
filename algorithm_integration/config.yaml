@@ -15,11 +15,13 @@ cnv_types:
 
 # PE/SR clustering parameters
 vcfcluster:
-    min_recip_frac: 0.1
-    min_dist: 300
-    min_svsize: 0
+    dist: 300
+    frac: 0.1
     blacklist: ref/b37.lumpy.exclude.4-13.bed.gz
+    svsize: 0
+    svtypes: DEL,DUP,INV,BND
 
 # Depth clustering parameters
 bedcluster:
     frac: 0.8
+    flags: "--merge-coordinates"

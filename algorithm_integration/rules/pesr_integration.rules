@@ -50,10 +50,11 @@ rule vcfcluster:
         svtools vcfcluster {input} {output.vcf} \
             -r {wildcards.chrom} \
             -p {params.prefix} \
-            -d {params.min_dist} \
-            -f {params.min_recip_frac} \
-            -z {params.min_svsize} \
-            -x {params.blacklist}
+            -d {params.dist} \
+            -f {params.frac} \
+            -x {params.blacklist} \
+            -z {params.svsize} \
+            -t {params.svtypes}
         """
 
 # Convert to RdTest format
