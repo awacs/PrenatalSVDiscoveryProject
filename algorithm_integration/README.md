@@ -1,22 +1,22 @@
 # Algorithm integration
 
-Per-algorithm integration is the first step of the pipeline after SV calls have
-been standardized. 
+This workflow integrates all variant calls in a batch of samples on a
+per-algorithm basis.
 
-This workflow considers samples to belong to a variant calling group, which is
-a subset of a larger processing batch. For example, samples may have been sequenced in two batches, which should be cons
-one , within which 
-a family which was called jointly, 
-
-The workflow thus expects a batch key, e.g.
+Frequently, samples are called jointly in a small group, which is a subset of a
+larger batch of sequencing libraries. To accomodate this paradigm, the user
+specifies a sample key, indicating which group and batch each sample belongs
+to, e.g.
 
 ```
-sample group batch
-11194.fa 11194 pcr_plus
-11006.mo 11006 pcr_minus
+sample	group	batch
+11194.fa	11194	pcr_plus
+11006.mo	11006	pcr_minus
 ```
 
-
+The workflow expects a PE/SR VCF for each group, and a depth bed for each batch,
+and integrates all variants belonging to a single batch. A group may be a
+single sample; simply use the sample ID as the group ID.
 
 ## Input files
 
@@ -64,7 +64,7 @@ This documentation is incomplete and in progress.
     List of groups to include during integration. Expects one PE/SR VCF per
     group.
 
-* `chroms`: filepath
+* `chroms`: filepath  
     List of chromosomes to include during integration. Integration is
     parallelized by chromosome.
 
