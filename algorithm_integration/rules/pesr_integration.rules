@@ -1,0 +1,67 @@
+"""
+pesr_integration.rules
+Matthew Stone <mstone5@mgh.harvard.edu>
+
+Cluster SV called by PE/SR-based algorithms. 
+"""
+
+import pandas as pd
+
+with open(config['groups']) as glist:
+    GROUPS = [g.strip() for g in glist.readlines()]
+
+BATCH_KEY = pd.read_table(config['batches'], dtype=str)
+BATCHES = sorted(BATCH_KEY.batch.unique())
+
+# Samples are processed in subgroups of each batch
+def get_batch_vcfs(wildcards):
+    batch = wildcards.batch
+    groups = BATCH_KEY.loc[BATCH_KEY.batch == batch, 'group'].unique()
+    groups = [g for g in groups if g in GROUPS]
+    
+    vcf_path = 'pesr/input_vcfs/{source}.{group}.vcf.gz'
+
+    return [vcf_path.format(source=wildcards.source, group=group) 
+            for group in groups]
+
+# Make list of VCFs for each batch/source combo
+rule make_vcf_list:
+    input:
+        get_batch_vcfs
+    output:
+        vcflist='pesr/vcflists/{batch}.{source}.list'
+    run:
+        with open(output[0], 'w') as fout:
+            for fname in sorted(input):
+                fout.write(fname + '\n')
+
+# Cluster all VCFs in a batch from a given algorithm
+rule vcfcluster:
+    """Cluster calls from a single algorithm across samples."""
+    input:
+        vcflist=rules.make_vcf_list.output.vcflist
+    output:
+        vcf='pesr/vcfcluster/{batch}.{source}.{chrom}.vcf',
+    params:
+        **config['vcfcluster'],
+        prefix=lambda wildcards: '{0}_{1}'.format(wildcards.batch, wildcards.source)
+    shell:
+        """
+        svtools vcfcluster {input} {output.vcf} \
+            -r {wildcards.chrom} \
+            -p {params.prefix} \
+            -d {params.dist} \
+            -f {params.frac} \
+            -x {params.blacklist} \
+            -z {params.svsize} \
+            -t {params.svtypes}
+        """
+
+# Convert to RdTest format
+rule make_pesr_rdtest_beds:
+    input:
+        vcf=rules.vcfcluster.output.vcf
+    output:
+        bed='pesr/rdtest_beds/{batch}.{source}.{chrom}.bed'
+    shell:
+        "./scripts/make_pesr_rdtest_bed.py {input} {output}"

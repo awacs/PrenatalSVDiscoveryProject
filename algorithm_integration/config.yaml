@@ -1,0 +1,27 @@
+# Key
+batches: ref/batch.key
+
+# Subsets to analyze
+groups: ref/quads.test.list
+chroms: ref/chroms.test2.list
+pesr_sources:
+    - delly
+    - lumpy
+    - manta
+    - wham
+cnv_types:
+    - DEL
+    - DUP
+
+# PE/SR clustering parameters
+vcfcluster:
+    dist: 300
+    frac: 0.1
+    blacklist: ref/b37.lumpy.exclude.4-13.bed.gz
+    svsize: 0
+    svtypes: DEL,DUP,INV,BND
+
+# Depth clustering parameters
+bedcluster:
+    frac: 0.8
+    flags: "--merge-coordinates"
