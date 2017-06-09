@@ -1,0 +1,10 @@
+# Ignore data directories
+input_beds
+input_vcfs
+input_beds/*
+input_vcfs/*
+ref/*
+vcfcluster/*
+vcflists/*
+bedcluster/*
+rdtest_beds/*
