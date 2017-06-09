@@ -24,7 +24,7 @@ ID.
 Variant calls must be standardized to the following specifications before
 integration. See the example preprocessing module for guidance.
 
-* `pesr/input_vcfs/{source}.{group}.vcf.gz`  
+* `input_vcfs/{source}.{group}.vcf.gz`  
     Tabix-indexed PE/SR VCFs per algorithm. 
     - {source} indicates the source algorithm.
     - {group} indicates a subgroup of samples which were called jointly.
@@ -34,7 +34,7 @@ integration. See the example preprocessing module for guidance.
       breakpoints must be segregated and annotated with strand.  
       (NOTE: END has become a reserved attribute in pysam 0.11.2.1 and may be
       deprecated here in the future.)
-* `depth/input_beds/{batch}.{svtype}.bed.gz`  
+* `input_beds/{batch}.{svtype}.bed.gz`  
     All per-sample depth calls in a batch, merged across algorithms.
     - Depth calls must be segregated by {svtype}, which may be DEL or DUP.
     - Each line corresponds to a single call in a single sample.
@@ -46,12 +46,10 @@ integration. See the example preprocessing module for guidance.
 
 ## Output files
 
-* `pesr/vcfcluster/{batch}.{source}.{chrom}.vcf`  
+* `vcfcluster/{batch}.{source}.{chrom}.vcf`  
     Clustered PE/SR variants, per batch, per source, and per chromosome.
-* `pesr/rdtest_beds/{batch}.{source}.{chrom}.bed`  
+* `rdtest_beds/{batch}.{source}.{chrom}.bed`  
     Clustered PE/SR variants in RdTest format. 
-* `depth/rdtest_beds/{batch}.depth.{chrom}.bed`  
-    Clustered depth variants, per batch and per chromosome, in RdTest format.
 
 ## Configuration
 

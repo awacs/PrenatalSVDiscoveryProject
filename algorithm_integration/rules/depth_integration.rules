@@ -13,9 +13,9 @@ def variant_prefix(wildcards):
 # Cluster CNV calls
 rule bedcluster:
     input:
-        bed='depth/input_beds/{batch}.{svtype}.bed.gz'
+        bed='input_beds/{batch}.{svtype}.bed.gz'
     output:
-        bed='depth/bedcluster/{batch}.{svtype}.{chrom}.bed'
+        bed='bedcluster/{batch}.{svtype}.{chrom}.bed'
     params:
         prefix=variant_prefix,
         **config['bedcluster']
@@ -34,7 +34,7 @@ rule make_depth_rdtest_beds:
         expand(rules.bedcluster.output.bed, svtype=CNV, 
                batch='{batch}', chrom='{chrom}')
     output:
-        'depth/rdtest_beds/{batch}.depth.{chrom}.bed'
+        'rdtest_beds/{batch}.depth.{chrom}.bed'
     shell:
         """
         cat \

@@ -23,7 +23,5 @@ wildcard_constraints:
 
 rule all:
     input:
-        expand('pesr/rdtest_beds/{batch}.{source}.{chrom}.bed',
-               batch=BATCHES, source=PESR_SOURCES, chrom=CHROMS),
-        expand('depth/rdtest_beds/{batch}.depth.{chrom}.bed',
-               batch=BATCHES, chrom=CHROMS),
+        expand('rdtest_beds/{batch}.{source}.{chrom}.bed',
+               batch=BATCHES, source=SOURCES, chrom=CHROMS),
