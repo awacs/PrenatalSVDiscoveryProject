@@ -14,9 +14,9 @@ sample	group	batch
 11006.mo	11006	pcr_minus
 ```
 
-The workflow expects a PE/SR VCF for each group, and a depth bed for each batch,
-and integrates all variants belonging to a single batch. A group may be a
-single sample; simply use the sample ID as the group ID.
+The workflow expects a PE/SR VCF for each group, and a depth bed for each
+batch, and integrates all variants belonging to a single batch. A group may be
+a single sample; simply use the sample ID as the group ID.
 
 ## Input files
 
