@@ -15,8 +15,9 @@ sample	group	batch
 ```
 
 The workflow expects a PE/SR VCF for each group, and a depth bed for each
-batch, and integrates all variants belonging to a single batch. A group may be
-a single sample; simply use the sample ID as the group ID.
+batch, as detailed below, and integrates all variants belonging to a single
+batch. A group may be a single sample; simply use the sample ID as the group
+ID.
 
 ## Input files
 
