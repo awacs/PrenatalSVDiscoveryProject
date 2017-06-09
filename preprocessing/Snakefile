@@ -29,6 +29,4 @@ rule all:
         'qc/aggregate/filtered_counts.txt',
         expand('std_beds/{batch}.{svtype}.bed.gz',
                batch=BATCHES, svtype=CNV)
-    output:
-        touch('all.done')
 
