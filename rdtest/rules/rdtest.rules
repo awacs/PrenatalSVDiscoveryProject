@@ -1,0 +1,71 @@
+
+# TODO: generate blacklist from batch key
+rule RdTest:
+    input:
+        bed='input_beds/{batch}.{source}.{chrom}.bed'
+    output:
+        pk='rdtest/{batch}.{source}.{chrom}.bed.pk',
+        zrank='rdtest/{batch}.{source}.{chrom}.bed_HomPowerPZRank.txt',
+    shell:
+         """
+         Rscript {config[rdtest]} \
+           -b {input.bed} \
+           -o rdtest/ \
+           -n {wildcards.batch}.{wildcards.source}.{wildcards.chrom}.bed \
+           -c {config[coveragefile]} \
+           -m {config[medianfile]} \
+           -f {config[famfile]}
+         """
+        # """
+        # cp {input.bed} {output.pk};
+        # cp {input.bed} {output.zrank};
+        # """
+
+rule rdtest_filter:
+    input:
+        zrank='rdtest/{source}/cohort.{chrom}.bed_HomPowerPZRank.txt',
+    output:
+        list='rdtest/{source}/cohort.rdtest_pass.{chrom}.list'
+    shell:
+        """
+        sed '1d' {input} | cut -f4 > {output}
+        """
+    
+
+# rule make_pk_list:
+#     input:
+#         expand('data/genotyping/{vs}.bed.pk', vs=variants)
+#     output:
+#         'scratch/reassigned.pk.list'
+#     run:
+#         with open(output[0], 'w') as fout:
+#             for fname in input:
+#                 fout.write(fname + '\n')
+# 
+# 
+# rule merge_pk: 
+#     input:
+#         'scratch/reassigned.pk.list'
+#     output:
+#         'data/gt_results/reassigned.pk'
+#     shell:
+#         """
+#         cat {input} \
+#           | xargs cat \
+#           | sed -e '/^Chr/d' \
+#           | sort -k1,1V -k2,2n \
+#           | uniq \
+#           | cat <(head -n1 {input} | xargs cat | head -n1) - \
+#           > {output}
+#         """
+# 
+# rule gt_filter:
+#     input:
+#         'data/gt_results/reassigned.pk'
+#     output:
+#         'data/gt_results/reassigned.gt_filter.pk'
+#     shell:
+#         """
+#         ./scripts/gt_filter.py {input} > {output}
+#         """
+# 
