@@ -1,7 +1,10 @@
-quads: ref/quads.test.list
+batches: ref/batch.key
+groups: ref/quads.test.list
 samples: ref/samples.test.list
 idmap: ref/519families_idmapping
 chroms: ref/chroms.test2.list
+
+preprocess: True
 
 blacklist: ref/b37.lumpy.exclude.4-13.bed.gz
 

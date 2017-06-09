@@ -1,44 +1,65 @@
 
 configfile: 'config.yaml'
 
-include: 'rules/pesr_alg_integration.rules'
-include: 'rules/depth_integration.rules'
-include: 'rules/RdTest.rules'
-include: 'rules/pesr_cohort_integration.rules'
-include: 'rules/pesr_depth_integration.rules'
-
 subworkflow preprocessing:
     workdir: "preprocessing"
 
+subworkflow algorithm_integration:
+    workdir: "algorithm_integration"
+
+import pandas as pd
+
+BATCH_KEY = pd.read_table(config['batches'], dtype=str)
+BATCHES = sorted(BATCH_KEY.batch.unique())
+
+with open(config['groups']) as glist:
+    GROUPS = [g.strip() for g in glist.readlines()]
+
 PESR_SOURCES = config['pesr_sources']
-DEPTH_SOURCES = config['depth_sources']
-SOURCES = PESR_SOURCES + DEPTH_SOURCES
-RDTEST_SOURCES = PESR_SOURCES + ['depth']
-SVTYPES = config['svtypes']
+SOURCES = PESR_SOURCES + ['depth']
 CNV = config['cnv_types']
-
-with open(config['quads']) as qlist:
-    QUADS = [q.strip() for q in qlist.readlines()]
-
-with open(config['samples']) as slist:
-    SAMPLES = [s.strip() for s in slist.readlines()]
 
 with open(config['chroms']) as clist:
     CHROMS = [c.strip() for c in clist.readlines()]
 
 wildcard_constraints:
-    source='(' + '|'.join(SOURCES) + '|depth' + ')',
-    sample='(' + '|'.join(SAMPLES) + ')',
-    svtype='(' + '|'.join(SVTYPES) + ')',
+    source='(' + '|'.join(SOURCES) + ')',
     chrom='(' + '|'.join(CHROMS) + ')'
+
+# Skip preprocessing unless explicitly requested
+if not config['preprocess']:
+    touch('checkpoints/preprocessing.done')
 
 rule all:
     input:
-        expand('integration/pesr_depth/variants/cohort.{chrom}.bed.gz', chrom=CHROMS),
-        expand('integration/pesr/bca/cohort.{chrom}.vcf', chrom=CHROMS),
+        'checkpoints/algorithm_integration.done'
 
-# TODO: add rules per submodule
-rule clean:
+rule preprocessing:
+    input:
+        vcfs=preprocessing(expand('filtered_vcfs/{source}.{group}.vcf.gz',
+                                  source=PESR_SOURCES, group=GROUPS)),
+        beds=preprocessing(expand('std_beds/{batch}.{svtype}.bed.gz',
+                                  batch=BATCHES, svtype=CNV))
+    output:
+        touch('checkpoints/preprocessing.done')
     shell:
-        "rm $(snakemake --summary | tail -n+2 | cut -f1)"
-        
+        """
+        mkdir -p algorithm_integration/input_vcfs;
+        mkdir -p algorithm_integration/input_beds;
+        for f in {input.vcfs}; do ln -s $(readlink -f $f) algorithm_integration/input_vcfs/; done;
+        for f in {input.beds}; do ln -s $(readlink -f $f) algorithm_integration/input_beds/; done;
+        """
+
+rule algorithm_integration:
+    input:
+        'checkpoints/preprocessing.done',
+        algorithm_integration(expand('rdtest_beds/{batch}.{source}.{chrom}.bed',
+                                     batch=BATCHES, source=SOURCES, chrom=CHROMS)),
+    output:
+        touch('checkpoints/algorithm_integration.done')
+    shell:
+        """
+        mkdir -p rdtest/input_beds;
+        for f in {input}; do ln -s $(readlink -f $f) rdtest/input_beds/; done
+        """
+

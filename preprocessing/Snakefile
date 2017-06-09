@@ -21,6 +21,9 @@ with open(config['groups']) as glist:
 PESR_SOURCES = config['pesr_sources']
 CNV = config['cnv_types']
 
+wildcard_constraints:
+    svtype='(' + '|'.join(CNV) + ')'
+
 rule all:
     input:
         expand('filtered_vcfs/{source}.{group}.vcf.gz',

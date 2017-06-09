@@ -130,7 +130,7 @@ def get_batched_depth_calls(wildcards):
     samples = BATCH_KEY.loc[(BATCH_KEY.batch == wildcards.batch) &
                             BATCH_KEY['group'].isin(GROUPS), 'sample']
     return expand(rules.caller_coverage.output.bed,
-                  sample=samples, svtype='{svtype}')
+                  sample=samples, svtype=wildcards.svtype)
 
 rule concat_merged_depth_calls:
     input:
