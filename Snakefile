@@ -41,6 +41,10 @@ rule preprocessing:
         beds=preprocessing(expand('std_beds/{batch}.{svtype}.bed.gz',
                                   batch=BATCHES, svtype=CNV))
     output:
+        expand('algorithm_integration/input_vcfs/{source}.{group}.vcf.gz',
+               source=PESR_SOURCES, group=GROUPS),
+        expand('algorithm_integration/input_beds/{batch}.{svtype}.bed.gz',
+               batch=BATCHES, svtype=CNV),
         touch('checkpoints/preprocessing.done')
     shell:
         """
