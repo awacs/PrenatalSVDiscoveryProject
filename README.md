@@ -2,7 +2,51 @@
 
 Talkowski Lab structural variant detection pipeline. Documentation in progress.
 
-## Dependencies
+## Installation and Usage
+As a `snakemake` workflow, the pipeline is intended to be cloned for each
+project, e.g.
+
+```
+$ git clone git@github.com:talkowski-lab/sv-pipeline.git MySVDiscoveryProject
+```
+
+Create and activate a new Anaconda environment with all the necessary
+dependencies.
+
+```
+$ cd MySVDiscoveryProject
+$ conda env create -f environment.yaml
+$ source activate sv_pipeline
+```
+
+After cloning the pipeline, edit `config.yaml` to update the configuration as
+necessary for the project, then link or copy raw data into the `data/` or
+`ref/` directories. (More detail below or to come. For current testing
+purposes, symlink the `data/` and `ref/` directories in
+`/data/talkowski/Samples/SFARI/deep_sv/asc_540/sv-pipeline-devel/`). 
+
+Optionally, run a dry run of `snakemake` to test the configuration, then run
+the pipeline with `snakemake`.
+
+```
+$ vim config.yaml
+$ ln -s ${raw_SV_calls} data/
+$ cp ${reference_data} ref/
+$ snakemake -np
+$ snakemake
+```
+
+The pipeline can remove all files it has generated without affecting
+configuration or data files.
+
+```
+$ snakemake clean
+```
+
+## Explicit Dependencies
+
+If you would prefer to use your own python environment, the following packages
+are necessary to run the pipeline.
 
 ### Python 3
 
@@ -55,38 +99,6 @@ In order to perform per-chromosome parallelization, the master branch of
 ```
 $ pip install git+git://github.com/daler/pybedtools.git@master
 $ pip install git+git://github.com/daler/pybedtools.git@b1e0ce0
-```
-
-## Installation and Usage
-As a `snakemake` workflow, the pipeline is intended to be cloned for each
-project, e.g.
-
-```
-$ git clone git@github.com:talkowski-lab/sv-pipeline.git MySVDiscoveryProject
-```
-
-After cloning the pipeline, edit `config.yaml` to update the configuration as
-necessary for the project, then link or copy raw data into the `data/` or
-`ref/` directories. (More detail below or to come. For current testing
-purposes, symlink the `data/` and `ref/` directories in
-`/data/talkowski/Samples/SFARI/deep_sv/asc_540/sv-pipeline-devel/`). 
-
-Optionally, run a dry run of `snakemake` to test the configuration, then run
-the pipeline with `snakemake`.
-
-```
-$ vim config.yaml
-$ ln -s ${raw_SV_calls} data/
-$ cp ${reference_data} ref/
-$ snakemake -np
-$ snakemake
-```
-
-The pipeline can remove all files it has generated without affecting
-configuration or data files.
-
-```
-$ snakemake clean
 ```
 
 # Running the pipeline
