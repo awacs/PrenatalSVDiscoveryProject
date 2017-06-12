@@ -21,9 +21,10 @@ def get_batch_vcfs(wildcards):
     groups = BATCH_KEY.loc[BATCH_KEY.batch == batch, 'group'].unique()
     groups = [g for g in groups if g in GROUPS]
     
-    vcf_path = 'input_vcfs/{source}.{group}.vcf.gz'
+    vcf_path = '{input_vcfs}/{source}.{group}.vcf.gz'
 
-    return [vcf_path.format(source=wildcards.source, group=group) 
+    return [vcf_path.format(source=wildcards.source, group=group,
+                            input_vcfs=config['input_vcfs']) 
             for group in groups]
 
 # Make list of VCFs for each batch/source combo

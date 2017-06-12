@@ -10,10 +10,16 @@ CNV = config['cnv_types']
 def variant_prefix(wildcards):
     return '{batch}_depth_{svtype}_{chrom}'.format(**wildcards)
 
+def input_bed(wildcards):
+    path = '{input_beds}/{batch}.{svtype}.bed.gz'
+    path = path.format(input_beds=config['input_beds'],
+                       batch=wildcards.batch, svtype=wildcards.svtype)
+    return path
+
 # Cluster CNV calls
 rule bedcluster:
     input:
-        bed='input_beds/{batch}.{svtype}.bed.gz'
+        bed=input_bed
     output:
         bed='bedcluster/{batch}.{svtype}.{chrom}.bed'
     params:
