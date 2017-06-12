@@ -44,20 +44,23 @@ rule vcfcluster:
     input:
         vcflist=rules.make_vcf_list.output.vcflist
     output:
-        vcf='vcfcluster/{batch}.{source}.{chrom}.vcf',
+        vcf='vcfcluster/{batch}.{source}.{chrom}.vcf.gz',
+        tbi='vcfcluster/{batch}.{source}.{chrom}.vcf.gz.tbi',
     params:
         **config['vcfcluster'],
         prefix=lambda wildcards: '{0}_{1}'.format(wildcards.batch, wildcards.source)
     shell:
         """
-        svtools vcfcluster {input} {output.vcf} \
+        svtools vcfcluster {input} stdout \
             -r {wildcards.chrom} \
             -p {params.prefix} \
             -d {params.dist} \
             -f {params.frac} \
             -x {params.blacklist} \
             -z {params.svsize} \
-            -t {params.svtypes}
+            -t {params.svtypes} \
+          | bgzip -c > {output.vcf};
+        tabix -p vcf {output.vcf};
         """
 
 # Convert to RdTest format
