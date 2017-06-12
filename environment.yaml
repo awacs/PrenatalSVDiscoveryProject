@@ -1,4 +1,4 @@
-name: pipeline_test
+name: sv_pipeline
 channels: !!python/tuple
 - !!python/unicode 'r'
 - !!python/unicode 'bioconda'
