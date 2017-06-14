@@ -1,71 +1,70 @@
 
+import numpy as np
+
+def input_bed(wildcards):
+    path='{input_beds}/{batch}.{source}.{chrom}.bed'
+    path = path.format(input_beds=config['input_beds'], batch=wildcards.batch,
+                       source=wildcards.source, chrom=wildcards.chrom)
+    return path
+
+
+def suffix_len(wildcards):
+    """Calculate minimum required suffix length to accomodate variants"""
+    bed = input_bed(wildcards)
+    with open(bed) as bedfile:
+        for i, l in enumerate(bedfile):
+            pass
+    lines = i + 1
+    n_splits = np.ceil(lines / config['rdtest_split_size'])
+
+    return max(int(np.ceil(np.log10(n_splits))), 1)
+    
+
+rule split_beds:
+    input:
+        bed=input_bed
+    output:
+        splits=dynamic('split_beds/{batch}.{source}.{chrom}.{split}')
+    params:
+        prefix='split_beds/{batch}.{source}.{chrom}.',
+        lines=config['rdtest_split_size'],
+        suffix_len=suffix_len
+    shell:
+        """
+        sed '/^#/d' {input.bed} \
+          | split -a {params.suffix_len} -d -l {params.lines} - {params.prefix}
+        """
+
 # TODO: generate blacklist from batch key
 rule RdTest:
     input:
-        bed='input_beds/{batch}.{source}.{chrom}.bed'
+        bed='split_beds/{batch}.{source}.{chrom}.{split}',
     output:
-        pk='rdtest/{batch}.{source}.{chrom}.bed.pk',
-        zrank='rdtest/{batch}.{source}.{chrom}.bed_HomPowerPZRank.txt',
+        metrics='split_rdtest/{batch}.{source}.{chrom}.{split}.metrics',
+    params:
+        whitelist='whitelists/{batch}.list'
     shell:
          """
          Rscript {config[rdtest]} \
            -b {input.bed} \
-           -o rdtest/ \
-           -n {wildcards.batch}.{wildcards.source}.{wildcards.chrom}.bed \
+           -o split_rdtest/ \
+           -n {wildcards.batch}.{wildcards.source}.{wildcards.chrom}.{wildcards.split} \
            -c {config[coveragefile]} \
            -m {config[medianfile]} \
-           -f {config[famfile]}
+           -f {config[famfile]} \
+           -w {params.whitelist}
          """
-        # """
-        # cp {input.bed} {output.pk};
-        # cp {input.bed} {output.zrank};
-        # """
 
-rule rdtest_filter:
+rule merge_rdtest:
     input:
-        zrank='rdtest/{source}/cohort.{chrom}.bed_HomPowerPZRank.txt',
+        dynamic('split_rdtest/{batch}.{source}.{chrom}.{split}.metrics')
     output:
-        list='rdtest/{source}/cohort.rdtest_pass.{chrom}.list'
+        'rdtest/{batch}.{source}.{chrom}.metrics'
     shell:
         """
-        sed '1d' {input} | cut -f4 > {output}
+        cat {input} \
+          | sed -r -e '/^chr\\s/d' \
+          | sort -k1,1V -k2,2n \
+          | cat <(head -n1 {input[0]}) - \
+          > {output}
         """
-    
-
-# rule make_pk_list:
-#     input:
-#         expand('data/genotyping/{vs}.bed.pk', vs=variants)
-#     output:
-#         'scratch/reassigned.pk.list'
-#     run:
-#         with open(output[0], 'w') as fout:
-#             for fname in input:
-#                 fout.write(fname + '\n')
-# 
-# 
-# rule merge_pk: 
-#     input:
-#         'scratch/reassigned.pk.list'
-#     output:
-#         'data/gt_results/reassigned.pk'
-#     shell:
-#         """
-#         cat {input} \
-#           | xargs cat \
-#           | sed -e '/^Chr/d' \
-#           | sort -k1,1V -k2,2n \
-#           | uniq \
-#           | cat <(head -n1 {input} | xargs cat | head -n1) - \
-#           > {output}
-#         """
-# 
-# rule gt_filter:
-#     input:
-#         'data/gt_results/reassigned.pk'
-#     output:
-#         'data/gt_results/reassigned.gt_filter.pk'
-#     shell:
-#         """
-#         ./scripts/gt_filter.py {input} > {output}
-#         """
-# 

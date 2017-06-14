@@ -20,3 +20,4 @@ rdtest: scripts/RdTest.R
 coveragefile: /data/talkowski/Samples/SFARI/deep_sv/asc_540/bincov/matrices/ASC540.all.binCov.raw.bed.gz
 medianfile: /data/talkowski/Samples/SFARI/deep_sv/asc_540/bincov/matrices/ASC540.all.binCov.median
 famfile: /data/talkowski/Samples/SFARI/lists/SFARI_Real.fam
+rdtest_split_size: 100
