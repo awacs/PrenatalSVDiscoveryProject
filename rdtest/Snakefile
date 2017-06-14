@@ -2,6 +2,7 @@
 configfile: 'config.yaml'
 
 include: 'rules/rdtest.rules'
+include: 'rules/srtest.rules'
 
 import pandas as pd
 
@@ -20,5 +21,7 @@ wildcard_constraints:
 
 rule all:
     input:
-        expand('rdtest/{batch}.{source}.{chrom}.bed.pk',
-               batch=BATCHES, source=SOURCES, chrom=CHROMS),
+#        expand('rdtest/{batch}.{source}.{chrom}.bed.metrics',
+#               batch=BATCHES, source=SOURCES, chrom=CHROMS),
+        expand('srtest/{batch}.{source}.{chrom}.stats',
+               batch=BATCHES, source=PESR_SOURCES, chrom=CHROMS),

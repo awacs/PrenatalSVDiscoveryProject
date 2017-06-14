@@ -1,6 +1,11 @@
 # Key
 batches: ref/batch.key
 
+input_beds: ../algorithm_integration/rdtest_beds
+input_vcfs: ../algorithm_integration/vcfcluster
+
+sr_counts: '../../pesr_testing/split_counts/cohort.txt.gz'
+
 # Subsets to analyze
 groups: ref/quads.test.list
 chroms: ref/chroms.test2.list
