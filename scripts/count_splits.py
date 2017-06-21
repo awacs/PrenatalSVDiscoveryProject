@@ -18,6 +18,7 @@ import pysam
 import boto3
 from helpers import is_excluded, is_soft_clipped
 import helpers
+from s3bam import load_bam
 
 
 def collect_splits(bam):
@@ -193,43 +194,14 @@ def main():
     #                    #  nargs='?', default=sys.stdout)
     args = parser.parse_args()
 
-    bam_path = args.bam
-    if args.bam.startswith('s3://'):
-        s3path = bam_path[5:]
-        bucket = s3path.split('/')[0]
-        bam_path = '/'.join(s3path.split('/')[1:])
-
-        # Get index if possible
-        bam_name = os.path.basename(bam_path)
-        if args.index_dir is None:
-            filepath_index = None
-        else:
-            idx1 = bam_name + '.bai'
-            idx2 = os.path.splitext(bam_name)[0] + '.bai'
-            if os.path.exists(idx1):
-                filepath_index = idx1
-            elif os.path.exists(idx2):
-                filepath_index = idx2
-            else:
-                filepath_index = None
-
-        bam = load_s3bam(bucket, bam_path, filepath_index)
-    else:
-        bam = pysam.AlignmentFile(args.bam)
-
+    bam = load_bam(args.bam)
     if args.region:
-        if ':' in args.region:
-            chrom, pos = args.region.split(':')
-            start, end = [int(x) for x in pos.split('-')]
-        else:
-            chrom = args.region
-            start = end = None
-        bam = bam.fetch(chrom, start, end)
+        bam = bam.fetch(args.region.encode('utf-8'))
 
     # Open output file
     if args.gzip:
         fout = gzip.open(args.fout, 'wb')
-    elif args.fout in '- stdin'.split():
+    elif args.fout in '- stdout'.split():
         fout = sys.stdout
     else:
         fout = open(args.fout, 'w')

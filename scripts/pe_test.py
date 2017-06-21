@@ -12,115 +12,155 @@
 
 import argparse
 import sys
+from collections import defaultdict
 import numpy as np
+import scipy.stats as ss
+import pandas as pd
 import pysam
-from svtools.genomeslink import GenomeSLINK, GSNode
+import svtools.pesr as pesr
 
 
-class _DiscPair(GSNode):
-    def __init__(self, chrA, posA, strandA, chrB, posB, strandB, sample,
-                 name='.'):
+class _DiscPair:
+    def __init__(self, chrA, posA, strandA, chrB, posB, strandB, sample):
+        self.chrA = chrA
+        self.posA = int(posA)
         self.strandA = strandA
+        self.chrB = chrB
+        self.posB = int(posB)
         self.strandB = strandB
         self.sample = sample
 
-        super().__init__(chrA, posA, chrB, posB, name)
 
-    def clusters_with(self, other, dist):
-        return (super().clusters_with(other, dist) and
-                self.strandA == other.strandA and
-                self.strandB == other.strandB and
-                self.sample == other.sample)
+class PEBreakpoint(pesr.Breakpoint):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    def __str__(self):
-        entry = super().__str__()
-        entry = entry + '\t{sample}\t{strandA}\t{strandB}'
-        entry = entry.format(**self.__dict__)
-        return entry
+        self.strandA, self.strandB = self.strands
 
+    def pe_test(self, samples, discfile, n_background, window_in, window_out):
+        self.choose_background(samples, n_background)
 
-def _DiscParser(discfile, region):
-    """
+        self.load_counts(discfile, window_in, window_out)
+        if self.pair_counts.shape[0] == 0:
+            self.null_score()
+            return
 
-    Parameters
-    ----------
-    discfile : pysam.TabixFile
-    regions : list of str
-    """
+        self.process_counts()
+        self.test_counts()
 
-    if isinstance(region, str):
-        region = region.encode('utf-8')
+    def load_counts(self, discfile, window_in, window_out):
+        reg = '{0}:{1}-{2}'
 
-    pairs = discfile.fetch(region=region, parser=pysam.asTuple())
-    for pair in pairs:
-        yield _DiscPair(*pair)
+        def _get_coords(pos, strand):
+            if strand == '+':
+                start, end = pos - window_out, pos + window_in
+            else:
+                start, end = pos - window_in, pos + window_out
+            return start, end
 
+        startA, endA = _get_coords(self.posA, self.strandA)
+        startB, endB = _get_coords(self.posB, self.strandB)
 
-class PECluster(GenomeSLINK):
-    def __init__(self, nodes, dist, record, window):
-        self.record = record
-        self.window = window
+        region = reg.format(self.chrA, startA, endA)
 
-        super().__init__(nodes, dist)
+        counts = defaultdict(int)
+        pairs = discfile.fetch(region=region, parser=pysam.asTuple())
 
-    def filter_nodes(self):
-        chrB = self.record.info['CHR2']
-        posB = self.record.info['END']
-        strandA, strandB = self.record.info['STRANDS']
+        for pair in pairs:
+            pair = _DiscPair(*pair)
 
-        # Pairs were selected based on window around chrA; check chrB
-        for node in self.nodes:
-            if node.chrB != chrB:
+            # Pairs were selected based on window around chrA; check chrB
+            if pair.chrB != self.chrB:
                 continue
-            if np.abs(node.posB - posB) > self.window:
+            if not (startB <= pair.posB < endB):
                 continue
-            if node.strandA != strandA or node.strandB != strandB:
+
+            # Require pairs match breakpoint strand
+            if pair.strandA != self.strandA or pair.strandB != self.strandB:
                 continue
-            yield node
+
+            counts[pair.sample] += 1
+
+        self.pair_counts = pd.DataFrame.from_dict({'count': counts})
+
+    def process_counts(self):
+        counts = self.pair_counts
+
+        # Restrict to called or background samples
+        samples = self.samples + self.background
+        counts = counts.reindex(samples).fillna(0).astype(int)
+        counts = counts.reset_index().rename(columns={'index': 'sample'})
+
+        # Label samples with background
+        is_called = counts['sample'].isin(self.samples)
+        if is_called.any():
+            counts.loc[is_called, 'call_status'] = 'called'
+        if (~is_called).any():
+            counts.loc[~is_called, 'call_status'] = 'background'
+
+        self.pair_counts = counts
+
+    def test_counts(self):
+        statuses = 'called background'.split()
+        medians = self.pair_counts.groupby('call_status')['count'].median()
+        medians = medians.reindex(statuses).fillna(0).astype(int)
+
+        pval = ss.poisson.cdf(medians.background, medians.called)
+
+        stats = [medians.called, medians.background, -np.log10(pval)]
+        columns = 'called_median bg_median log_pval'.split()
+        self.stats = pd.DataFrame([stats], columns=columns)
+
+    def null_score(self):
+        columns = 'called_median bg_median log_pval'.split()
+        self.stats = pd.DataFrame([[0, 0, 0]], columns=columns)
+
 
 
 class PETest:
-    def __init__(self, variants, discfile, window=1000, dist=300):
+    def __init__(self, variants, discfile,
+                 window_in=50, window_out=500, n_background=160):
         """
         variants : pysam.VariantFile
         discfile : pysam.TabixFile
             chrA, posA, strandA, chrB, posB, strandB, sample
         window : int, optional
             Window around variant start/end to query for discordant pairs
-        dist : int, optional
-            Clustering distance
         """
 
         self.variants = variants
         self.discfile = discfile
-        self.window = window
-        self.dist = dist
+        self.window_in = window_in
+        self.window_out = window_out
+        self.samples = list(self.variants.header.samples)
+        self.n_background = n_background
 
     def run(self):
         for record in self.variants:
             # Temporary tloc filter
             if record.chrom != record.info['CHR2']:
                 continue
-            clusters = self.cluster(record)
-            import ipdb
-            ipdb.set_trace()
-            yield clusters
-            pass
 
-    def cluster(self, record):
-        chrA = record.chrom
-        posA = record.pos
-        strandA, strandB = record.info['STRANDS']
+            breakpoint = PEBreakpoint.from_vcf(record)
 
-        reg = '{0}:{1}-{2}'
-        region = reg.format(chrA, posA - self.window, posA + self.window)
+            breakpoint.pe_test(self.samples, self.discfile, self.n_background,
+                               self.window_in, self.window_out)
 
-        pairs = _DiscParser(self.discfile, region)
-        slink = PECluster(pairs, self.dist, record, self.window)
+            stats = breakpoint.stats
+            stats['name'] = record.id
 
-        return slink.cluster()
-        #  for cluster in slink.cluster():
-            #  yield cluster
+            cols = 'name log_pval called_median bg_median'.split()
+            yield stats[cols]
+
+    def count_pairs(self, record):
+        pairs = self.fetch_pairs(record)
+
+        counts = defaultdict(int)
+        for pair in pairs:
+            counts[pair.sample] += 1
+
+        counts = pd.DataFrame.from_dict({'counts': counts})
+        return counts
 
 
 def main(argv):
@@ -129,11 +169,17 @@ def main(argv):
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('variants', help='Variants (default=VCF).')
     parser.add_argument('disc', help='Table of discordant pair coordinates.')
-    parser.add_argument('-w', '--window', type=int, default=1000,
-                        help='Window around breakpoint to query for '
-                        'discordant pairs. [1000]')
-    parser.add_argument('-d', '--dist', type=int, default=300,
-                        help='Clustering distance. [300]')
+    parser.add_argument('fout', type=argparse.FileType('w'),
+                        help='Output table of PE counts.')
+    parser.add_argument('-o', '--window-out', type=int, default=500,
+                        help='Window outside breakpoint to query for '
+                        'discordant pairs. [500]')
+    parser.add_argument('-i', '--window-in', type=int, default=50,
+                        help='Window inside breakpoint to query for '
+                        'discordant pairs. [50]')
+    parser.add_argument('-b', '--background', type=int, default=160,
+                        help='Number of background samples to sample for PE '
+                        'evidence. [160]')
 
     if len(argv) == 0:
         parser.print_help()
@@ -147,10 +193,11 @@ def main(argv):
 
     discfile = pysam.Tabixfile(args.disc)
 
-    petest = PETest(variantfile, discfile)
-    for clusters in petest.run():
-        pass
+    petest = PETest(variantfile, discfile, args.window_in, args.window_out,
+                    args.background)
 
+    for stats in petest.run():
+        stats.to_csv(args.fout, sep='\t', index=False, header=False)
 
 
 if __name__ == '__main__':
