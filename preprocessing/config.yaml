@@ -1,7 +1,6 @@
 batches: ref/batch.key
 
-groups: ref/quads.test.list
-samples: ref/samples.test.list
+groups: ref/quads.519.list
 idmap: ref/519families_idmapping
 
 pesr_sources:
