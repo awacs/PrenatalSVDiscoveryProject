@@ -9,3 +9,7 @@ vcfcluster/*
 vcflists/*
 bedcluster/*
 rdtest_beds/*
+*.bed
+*.bed.gz
+*.tbi
+logs/*

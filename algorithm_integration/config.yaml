@@ -1,13 +1,13 @@
 # Key
-batches: ref/batch.key
+batches: ../ref/batch.key
 
 # Input directory
 input_vcfs: ../preprocessing/filtered_vcfs/
 input_beds: ../preprocessing/std_beds/
 
 # Subsets to analyze
-groups: ref/quads.test.list
-chroms: ref/chroms.test2.list
+groups: ../ref/quads.519.list
+chroms: ../ref/chroms.all.list
 pesr_sources:
     - delly
     - lumpy
@@ -21,7 +21,7 @@ cnv_types:
 vcfcluster:
     dist: 300
     frac: 0.1
-    blacklist: ref/b37.lumpy.exclude.4-13.bed.gz
+    blacklist: ../ref/b37.lumpy.exclude.4-13.bed.gz
     svsize: 0
     svtypes: DEL,DUP,INV,BND
 
