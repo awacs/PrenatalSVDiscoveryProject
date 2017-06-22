@@ -70,6 +70,50 @@ def collect_disc(bam):
         else:
             pairs[read.query_name] = read
 
+def collect_tloc(bam):
+    """
+    Extract tlocs.
+
+    Excludes unmapped reads, reads with an unmapped mate, duplicate reads, and
+    secondary or supplementary alignments. 
+
+    Parameters
+    ----------
+    bam : pysam.AlignmentFile
+
+    Yields
+    ------
+    readA, readB : pysam.AlignedSegment
+        Reads in a discordant pair
+    """
+
+    for read in bam:
+        # Restrict to unique primary alignments with a mapped mate
+        # Equivalent to `samtools view -F 3340`
+        if is_excluded(read):
+            continue
+
+        # Only report discordant pairs
+        if read.is_proper_pair:
+            continue
+
+        # Skip same chromosome
+        # Assume coordinate sorted header, use reference_id instead of name
+        if read.reference_id >= read.next_reference_id:
+            continue
+
+        chrA = read.reference_name
+        chrB = read.next_reference_name
+        posA = read.reference_start
+        posB = read.next_reference_start
+        strandA = '-' if read.is_reverse else '+'
+        strandB = '-' if read.mate_is_reverse else '+'
+
+        entry = '{0}\t{1}\t{2}\t{3}\t{4}\t{5}'
+        entry = entry.format(chrA, posA, strandA, chrB, posB, strandB)
+
+        yield entry
+
 
 def condense_pair(readA, readB):
     """
@@ -116,6 +160,7 @@ def main():
     parser.add_argument('-r', '--region',
                         help='Tabix-formatted region to parse')
     parser.add_argument('-s', '--sample', help='Sample ID to append to output')
+    parser.add_argument('--tloc', action='store_true', default=False)
     #  parser.add_argument('-z', '--gzip', default=False, action='store_true',
                         #  help='Gzip output')
     #  , type=argparse.FileType('w'),
@@ -142,12 +187,20 @@ def main():
     if args.region:
         bam = bam.fetch(region=args.region.encode('utf-8'))
 
-    for readA, readB in collect_disc(bam):
-        entry = condense_pair(readA, readB)
-        if args.sample: 
-            entry = entry + '\t' + args.sample
-        
-        sys.stdout.write(entry + '\n')
+    if args.tloc:
+        for entry in collect_tloc(bam):
+            if args.sample: 
+                entry = entry + '\t' + args.sample
+            
+            sys.stdout.write(entry + '\n')
+    else:
+        for readA, readB in collect_disc(bam):
+            entry = condense_pair(readA, readB)
+
+            if args.sample: 
+                entry = entry + '\t' + args.sample
+            
+            sys.stdout.write(entry + '\n')
 
 if __name__ == '__main__':
     main()

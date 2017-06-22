@@ -7,12 +7,19 @@ with open(config['samples']) as slist:
 with open(config['chroms']) as clist:
     CHROMS = [c.strip() for c in clist.readlines()]
 
-with open('failures.list') as clist:
-    CS = [c.strip() for c in clist.readlines()]
+# with open('failures.list') as clist:
+#     CS = [c.strip() for c in clist.readlines()]
+
+with open('ref/519families_idmapping') as idmapfile:
+    idmap = {}
+    for line in idmapfile:
+        sample, ssc = line.strip().split()
+        idmap[sample] = ssc
 #CHROMS = [str(x) for x in range(1, 23)] + 'X Y'.split()
 
 # OUTDIRS = 'split_counts disc_counts'.split()
-OUTDIRS = ['disc_counts']
+# OUTDIRS = ['disc_counts']
+OUTDIRS = ['tloc_counts']
 
 rule all:
     input:
@@ -68,6 +75,34 @@ rule count_disc:
         count_disc=$(readlink -f scripts/count_disc.py);
         cd {params.index_dir};
         $count_disc -r {wildcards.chrom} $(s3bam {wildcards.sample}) \
+          | sort -k1,1V -k2,2n -k5,5n \
+          | bgzip -c > $fout
+        """
+
+def s3bam(wildcards):
+    sample = wildcards.sample
+    ssc = idmap[sample]
+    quad = sample.split('.')[0]
+
+    path = 's3://sscwgs/{quad}/BAM/Sample_{ssc}/analysis/{ssc}.final.bam'
+    return path.format(quad=quad, ssc=ssc)
+    
+rule count_tloc:
+    input:
+        recurse_counts
+    output:
+        '{outdir}/{chrom}/{sample}.txt.gz'
+    params:
+        index_dir=config['bam_indexes'],
+        bam=s3bam
+    wildcard_constraints:
+        outdir='tloc_counts'
+    shell:
+        """
+        fout=$(readlink -f {output});
+        count_disc=$(readlink -f scripts/count_disc.py);
+        cd {params.index_dir};
+        $count_disc --tloc -s {wildcards.sample} -r {wildcards.chrom} {params.bam} \
           | sort -k1,1V -k2,2n -k5,5n \
           | bgzip -c > $fout
         """
