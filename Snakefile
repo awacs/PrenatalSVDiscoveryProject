@@ -19,12 +19,15 @@ with open('ref/519families_idmapping') as idmapfile:
 
 # OUTDIRS = 'split_counts disc_counts'.split()
 # OUTDIRS = ['disc_counts']
-OUTDIRS = ['tloc_counts']
+# OUTDIRS = ['tloc_counts']
+# SAMPLES = ['11194.p1']
 
 rule all:
     input:
-        expand('{outdir}_filtered/{chrom}/{sample}.txt.gz', outdir=OUTDIRS,
+        expand('sample_counts/{chrom}/{sample}.txt.gz',
                chrom=CHROMS, sample=SAMPLES)
+#        expand('{outdir}_filtered/{chrom}/{sample}.txt.gz', outdir=OUTDIRS,
+#               chrom=CHROMS, sample=SAMPLES)
 #        expand('split_counts/{cs}.txt.gz', cs=CS),
 #        expand('disc_counts/{cs}.txt.gz', cs=CS)
        
@@ -120,4 +123,28 @@ rule filter:
         tabix -s1 -b2 -e2 {input};
         tabix -R {params.whitelist} {input} | bgzip -c > {output};
         tabix -s1 -b2 -e2 {output};
+        """
+
+rule merge_disc_tloc:
+    input:
+        disc='disc_counts_filtered/{chrom}/{sample}.txt.gz',
+        tloc='tloc_counts_filtered/{chrom}/{sample}.txt.gz'
+    output:
+        'sample_counts/{chrom}/{sample}.txt.gz'
+    shell:
+        """
+        sort -m -k1,1V -k2,2n -k4,4V -k5,5n \
+          <(bgzip -d -c {input.disc}) \
+          <(bgzip -d -c {input.tloc}) \
+          | bgzip -c > {output}
+        """
+
+rule merge_samples:
+    input:
+        expand('sample_counts/{{chrom}}/{sample}.txt.gz', sample=SAMPLES)
+    output:
+        'merged_counts/cohort.{chrom}.txt.gz'
+    shell:
+        """
+        ./scripts/merge_samples.sh {config[samples]} {wildcards.chrom}
         """
