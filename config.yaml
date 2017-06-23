@@ -10,3 +10,5 @@ quads: ref/quads.519.list
 
 window: 250
 min_splits: 1
+
+whitelist: ref/b37.lumpy.include.4-13.bed.gz

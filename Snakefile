@@ -18,12 +18,12 @@ with open('ref/519families_idmapping') as idmapfile:
 #CHROMS = [str(x) for x in range(1, 23)] + 'X Y'.split()
 
 # OUTDIRS = 'split_counts disc_counts'.split()
-OUTDIRS = ['disc_counts']
-# OUTDIRS = ['tloc_counts']
+# OUTDIRS = ['disc_counts']
+OUTDIRS = ['tloc_counts']
 
 rule all:
     input:
-        expand('{outdir}/{chrom}/{sample}.txt.gz', outdir=OUTDIRS,
+        expand('{outdir}_filtered/{chrom}/{sample}.txt.gz', outdir=OUTDIRS,
                chrom=CHROMS, sample=SAMPLES)
 #        expand('split_counts/{cs}.txt.gz', cs=CS),
 #        expand('disc_counts/{cs}.txt.gz', cs=CS)
@@ -106,4 +106,18 @@ rule count_tloc:
         $count_disc --tloc -s {wildcards.sample} -r {wildcards.chrom} {params.bam} \
           | sort -k1,1V -k2,2n -k5,5n \
           | bgzip -c > $fout
+        """
+
+rule filter:
+    input:
+        '{outdir}/{chrom}/{sample}.txt.gz'
+    output:
+        '{outdir}_filtered/{chrom}/{sample}.txt.gz'
+    params:
+        whitelist=config['whitelist']
+    shell:
+        """
+        tabix -s1 -b2 -e2 {input};
+        tabix -R {params.whitelist} {input} | bgzip -c > {output};
+        tabix -s1 -b2 -e2 {output};
         """
