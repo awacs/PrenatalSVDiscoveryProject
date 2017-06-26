@@ -1,2 +1,5 @@
 # Ignore module data
 metrics/*
+logs/*
+
+__pycache__
