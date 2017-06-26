@@ -1,8 +1,8 @@
 
 configfile: 'config.yaml'
 
+
 include: 'rules/rdtest.rules'
-include: 'rules/srtest.rules'
 
 import pandas as pd
 
@@ -23,5 +23,3 @@ rule all:
     input:
         expand('rdtest/{batch}.{source}.{chrom}.metrics',
                batch=BATCHES, source=SOURCES, chrom=CHROMS),
-        expand('srtest/{batch}.{source}.{chrom}.stats',
-               batch=BATCHES, source=PESR_SOURCES, chrom=CHROMS),
