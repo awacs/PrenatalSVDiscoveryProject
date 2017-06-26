@@ -25,5 +25,6 @@ snakemake \
   --cluster 'bsub -q {cluster.queue} -o {cluster.log} -sla miket_sc -J {cluster.jobname} {cluster.flags}' \
   --jobs 1000 \
   --stats logs/${snakename}.stats \
+  --keep-going \
   ${rerun}"
 
