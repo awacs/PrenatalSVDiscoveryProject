@@ -1,0 +1,18 @@
+# Key
+batches: ../ref/batch.key
+
+# Test stats directories
+rdtest: "../rdtest/rdtest"
+srtest: "../srtest/srtest"
+petest: "../petest/petest"
+baftest: "../baftest/baftest"
+vcfs: "../algorithm_integration/vcfcluster"
+
+# Subsets to analyze
+groups: ../ref/quads.519.list
+chroms: ../ref/chroms.all.list
+pesr_sources:
+    - delly
+    - lumpy
+    - manta
+    - wham

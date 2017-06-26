@@ -1,0 +1,71 @@
+
+def input_vcf(wildcards):
+    path='{input_vcfs}/{batch}.{source}.{chrom}.vcf'
+    path = path.format(input_vcfs=config['input_vcfs'], batch=wildcards.batch,
+                       source=wildcards.source, chrom=wildcards.chrom)
+    return path
+
+def input_bed(wildcards):
+    path='{input_beds}/{batch}.{source}.{chrom}.bed'
+    path = path.format(input_beds=config['input_beds'], batch=wildcards.batch,
+                       source=wildcards.source, chrom=wildcards.chrom)
+    return path
+
+def get_testfiles():
+    inputs = {}
+
+    dtypes = [dtype + 'test' for dtype in 'pe sr rd baf'.split()]
+    fpath = '{dirname}/{{batch}}.{{source}}.{{chrom}}.{suffix}'
+
+    for dtype in dtypes:
+        if dtype == 'rdtest':
+            suffix = 'metrics'
+        elif dtype == 'baftest':
+            suffix = 'stat'
+        else:
+            suffix = 'stats'
+
+        path = fpath.format(dirname=config[dtype], suffix=suffix)
+        inputs[dtype] = path
+
+    inputs['vcf'] = fpath.format(dirname=config['vcfs'], suffix='vcf')
+
+    return inputs
+
+rule aggregate_vcf:
+    output:
+        'metrics/{batch}.{source}.{chrom}.metrics'
+    params:
+        vcf=input_vcf,
+        **get_testfiles()
+    wildcard_constraints:
+        source='(' + '|'.join(config['pesr_sources']) + ')'
+    shell:
+        """
+        ./scripts/aggregate.py \
+            -r {params.rdtest} \
+            -s {params.srtest} \
+            -p {params.petest} \
+            -b {params.baftest} \
+            -v {params.vcf} \
+            {output}
+        """
+
+rule aggregate_bed:
+    output:
+        'metrics/{batch}.{source}.{chrom}.metrics'
+    params:
+        bed=input_bed,
+        **get_testfiles()
+    wildcard_constraints:
+        source='depth'
+    shell:
+        """
+        ./scripts/aggregate.py \
+            -r {params.rdtest} \
+            -s {params.srtest} \
+            -p {params.petest} \
+            -b {params.baftest} \
+            -d {params.bed} \
+            {output}
+        """
