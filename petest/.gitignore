@@ -1,0 +1,6 @@
+# Ignore module data
+petest/*
+pe_counts/*
+
+# Ignore cluster logs
+logs/*
