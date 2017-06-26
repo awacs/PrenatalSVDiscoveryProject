@@ -1,0 +1,18 @@
+
+def input_vcf(wildcards):
+    path='{input_vcfs}/{batch}.{source}.{chrom}.vcf'
+    path = path.format(input_vcfs=config['input_vcfs'], batch=wildcards.batch,
+                       source=wildcards.source, chrom=wildcards.chrom)
+    return path
+
+# TODO: generate blacklist from batch key
+rule petest:
+    input:
+        vcf=input_vcf
+    output:
+        metrics='petest/{batch}.{source}.{chrom}.stats',
+    shell:
+         """
+         svtools pe-test {input.vcf} {config[pe_counts]} {output.metrics}
+         """
+
