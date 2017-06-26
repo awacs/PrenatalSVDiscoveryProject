@@ -5,10 +5,8 @@
 # Don't track module data
 data/*
 logs/*
-preprocessing/*
-integration/*
-rdtest/*
-bca/*
+*.bed.gz
+*.tbi
 
 # Or symlinks to data
 data
@@ -31,4 +29,3 @@ test*
 # Ignore algorithm integration data directories
 algorithm_integration/depth/*
 algorithm_integration/pesr/*
-
