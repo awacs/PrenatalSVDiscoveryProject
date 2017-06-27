@@ -35,9 +35,16 @@ rule remove_vcf_outliers:
     script:
         "scripts/remove_outliers.py"
 
+def filtered_vcf(wildcards):
+    source = wildcards.source
+    if source in config['outlier_removal']:
+        return rules.remove_vcf_outliers.output.vcf
+    else:
+        return rules.standardize_vcf.output.vcf
+        
 rule sort_vcfs:
     input:
-        vcf=rules.remove_vcf_outliers.output.vcf
+        filtered_vcf
     output:
         vcf='filtered_vcfs/{source}.{group}.vcf.gz',
         idx='filtered_vcfs/{source}.{group}.vcf.gz.tbi',

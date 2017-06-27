@@ -8,6 +8,7 @@ pesr_sources:
     - lumpy
     - manta
     - wham
+    - melt
 depth_sources:
     - cnmops
     - cnvnator
@@ -22,3 +23,10 @@ svtypes:
 cnv_types:
     - DEL
     - DUP
+
+# sources to remove outliers from 
+outlier_removal:
+    - delly
+    - lumpy
+    - manta
+    - wham 
