@@ -13,6 +13,8 @@ pesr_sources:
     - lumpy
     - manta
     - wham
+mei_sources:
+    - melt
 cnv_types:
     - DEL
     - DUP
@@ -23,7 +25,10 @@ vcfcluster:
     frac: 0.1
     blacklist: ../ref/b37.lumpy.exclude.4-13.bed.gz
     svsize: 0
-    svtypes: DEL,DUP,INV,BND
+
+svtypes:
+    pesr: DEL,DUP,INV,BND
+    mei: INS
 
 # Depth clustering parameters
 bedcluster:
