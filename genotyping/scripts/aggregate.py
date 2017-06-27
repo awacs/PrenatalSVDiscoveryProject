@@ -127,16 +127,30 @@ def get_inh_rate(called):
     return n_inh / n_called
 
 
-def process_metadata(vcf):
-    samples = list(vcf.header.samples)
+def process_metadata(variants, bed=False, batch_list=None):
+    if bed:
+        samples = [s.strip() for s in batch_list.readlines()]
+    else:
+        samples = list(variants.header.samples)
+
     parents = [s for s in samples if _is_parent(s)]
     children = [s for s in samples if _is_child(s)]
     n_parents = len(parents)
     n_children = len(children)
 
     metadata = deque()
-    for record in vcf:
-        called = svu.get_called_samples(record)
+    for variant in variants:
+        # bed record
+        if bed:
+            data = variant.strip().split()
+            called = data[4].split(',')
+            name = data[3]
+            svtype = data[5]
+        # VCF record
+        else:
+            called = svu.get_called_samples(variant)
+            name = variant.id
+            svtype = variant.info['SVTYPE']
 
         # Calculate parental VF
         parents = [s for s in called if _is_parent(s)]
@@ -150,8 +164,7 @@ def process_metadata(vcf):
         else:
             inh_rate = 0
 
-        dat = [record.id, record.info['SVTYPE'],
-               parental_vf, child_vf, inh_rate]
+        dat = [name, svtype, parental_vf, child_vf, inh_rate]
         metadata.append(dat)
 
     metadata = np.array(metadata)
@@ -178,32 +191,65 @@ def add_pesr(evidence):
     return evidence
 
 
+def make_columns():
+    PE_names = ('log_pval called_median bg_median').split()
+    PESR_names = ['PESR_' + name for name in PE_names]
+    PE_names = ['PE_' + name for name in PE_names]
+
+    SR_names = ('posA_log_pval posB_log_pval sum_log_pval '
+                'posA_called_median posB_called_median sum_called_median '
+                'posA_bg_median posB_bg_median sum_bg_median').split()
+    SR_names = ['SR_' + name for name in SR_names]
+
+    BAF_names = ('delstat snp_ratio del_loglik dupstat KS_stat KS_pval '
+                 'total_case_snps total_snps n_nonROH_cases n_samples '
+                 'mean_control_snps n_nonROH_controls n_controls').split()
+    BAF_names = ['BAF_' + name for name in BAF_names]
+
+    RD_names = ('Median_Power P 2ndMaxP Model Median_Rank Median_Separation '
+                'log_pval log_2ndMaxP').split()
+    RD_names = ['RD_' + name for name in RD_names]
+
+    metadata_names = 'name svtype parental_vf child_vf inh_rate'.split()
+
+    return (metadata_names + PE_names + SR_names + PESR_names + RD_names +
+            BAF_names)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('-v', '--variants', required=True, help='Default VCF')
     parser.add_argument('-r', '--RDtest', required=True)
-    parser.add_argument('-s', '--SRtest', required=True)
-    parser.add_argument('-p', '--PEtest', required=True)
     parser.add_argument('-b', '--BAFtest', required=True)
-
-    variants = parser.add_mutually_exclusive_group(required=True)
-    variants.add_argument('-d', '--bed')
-    variants.add_argument('-v', '--vcf')
+    parser.add_argument('-s', '--SRtest')
+    parser.add_argument('-p', '--PEtest')
+    parser.add_argument('--batch-list', type=argparse.FileType('r'))
+    parser.add_argument('-d', '--bed', action='store_true', default=False)
     parser.add_argument('fout')
     args = parser.parse_args()
 
-    vcf = pysam.VariantFile(args.vcf)
-    metadata = process_metadata(vcf)
+    if args.bed:
+        if not hasattr(args, 'batch_list'):
+            raise Exception('batch list must be specified when passing a bed')
+        variants = open(args.variants)
+        dtypes = 'RD BAF'.split()
+    else:
+        variants = pysam.VariantFile(args.variants)
+        dtypes = 'PE SR RD BAF'.split()
+
+    metadata = process_metadata(variants, args.bed, args.batch_list)
     metadata = metadata.set_index('name')
 
     evidence = deque()
+
     BAF_names = ('chrom start end name samples svtype delstat snp_ratio '
                  'del_loglik dupstat KS_stat KS_pval total_case_snps '
                  'total_snps n_nonROH_cases n_samples mean_control_snps '
                  'n_nonROH_controls n_controls').split()
 
-    for dtype in 'PE SR RD BAF'.split():
+    for dtype in dtypes:
         names = BAF_names if dtype == 'BAF' else None
         df = pd.read_table(getattr(args, dtype + 'test'), names=names)
 
@@ -216,8 +262,10 @@ def main():
     evidence = metadata.join(evidence, how='outer', sort=True)
     evidence = evidence.reset_index().rename(columns={'index': 'name'})
 
-    evidence = add_pesr(evidence)
+    if not args.bed:
+        evidence = add_pesr(evidence)
 
+    evidence = evidence.reindex(columns=make_columns())
     evidence.to_csv(args.fout, index=False, sep='\t', na_rep='NA')
 
 

@@ -11,10 +11,10 @@ def input_bed(wildcards):
                        source=wildcards.source, chrom=wildcards.chrom)
     return path
 
-def get_testfiles():
+def get_testfiles(dtypes):
     inputs = {}
 
-    dtypes = [dtype + 'test' for dtype in 'pe sr rd baf'.split()]
+    dtypes = [dtype + 'test' for dtype in dtypes]
     fpath = '{dirname}/{{batch}}.{{source}}.{{chrom}}.{suffix}'
 
     for dtype in dtypes:
@@ -28,7 +28,7 @@ def get_testfiles():
         path = fpath.format(dirname=config[dtype], suffix=suffix)
         inputs[dtype] = path
 
-    inputs['vcf'] = fpath.format(dirname=config['vcfs'], suffix='vcf')
+#    inputs['vcf'] = fpath.format(dirname=config['vcfs'], suffix='vcf')
 
     return inputs
 
@@ -37,7 +37,7 @@ rule aggregate_vcf:
         'metrics/{batch}.{source}.{chrom}.metrics'
     params:
         vcf=input_vcf,
-        **get_testfiles()
+        **get_testfiles('pe sr rd baf'.split())
     wildcard_constraints:
         source='(' + '|'.join(config['pesr_sources']) + ')'
     shell:
@@ -51,21 +51,26 @@ rule aggregate_vcf:
             {output}
         """
 
+def batch_list(wildcards):
+    batch = wildcards.batch
+    return '../rdtest/whitelists/{0}.list'.format(batch)
+
 rule aggregate_bed:
     output:
         'metrics/{batch}.{source}.{chrom}.metrics'
     params:
         bed=input_bed,
-        **get_testfiles()
+        batchlist=batch_list,
+        **get_testfiles('rd baf'.split())
     wildcard_constraints:
         source='depth'
     shell:
         """
         ./scripts/aggregate.py \
             -r {params.rdtest} \
-            -s {params.srtest} \
-            -p {params.petest} \
             -b {params.baftest} \
-            -d {params.bed} \
+            -v {params.bed} \
+            --batch-list {params.batchlist} \
+            --bed \
             {output}
         """
