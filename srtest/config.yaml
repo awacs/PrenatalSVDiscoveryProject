@@ -14,6 +14,7 @@ pesr_sources:
     - lumpy
     - manta
     - wham
+    - melt
 
 # RdTest parameters
 rdtest: scripts/RdTest.R
