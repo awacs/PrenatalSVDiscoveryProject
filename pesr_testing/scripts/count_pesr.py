@@ -5,22 +5,30 @@
 # Distributed under terms of the MIT license.
 
 """
+Collect split read and discordant pair data from a bam alignment.
 
+Split reads: The tool counts the number of reads soft-clipped in each direction
+(30S121M = left-clipped, 121M30S = right-clipped) at each position in the
+genome.  The position of a right-clipped read is shifted by the length of its
+alignment.
+
+Discordant pairs: The tool reduces discordant pairs to (chrA, posA, strandA,
+chrB, posB, strandB).
+
+Unmapped reads, reads with unmapped mates, secondary and supplementary
+alignments, and duplicates are excluded (SAM flag 3340).
+
+Collection can be performed on an S3-hosted bam. The tool will attempt to find
+a local copy of the bam index in the working directory, or the directory
+specified with `--index-dir`, otherwise the index will be downloaded.
 """
 
 import argparse
-import os
-import subprocess
-import sys
-import gzip
 from collections import defaultdict, deque
 import numpy as np
 import pysam
-import boto3
 from natsort import natsorted
-from helpers import is_excluded, is_soft_clipped
-import helpers
-from s3bam import load_bam
+import svtools.utils as svu
 
 
 class PESRCollection:
@@ -57,16 +65,18 @@ class PESRCollection:
         for read in self.bam:
             # Restrict to unique primary alignments with a mapped mate
             # Equivalent to `samtools view -F 3340`
-            if is_excluded(read):
+            if svu.is_excluded(read):
                 continue
 
             # Soft clip indicate a candidate split read
-            if is_soft_clipped(read):
-                self.count_split(read)
+            if svu.is_soft_clipped(read):
+                if self.splitfile is not None:
+                    self.count_split(read)
 
             # After counting splits, evaluate discordant pairs
             if not read.is_proper_pair:
-                self.report_disc(read)
+                if self.discfile is not None:
+                    self.report_disc(read)
 
         self.flush_split_counts()
         self.flush_disc_pairs()
@@ -74,6 +84,10 @@ class PESRCollection:
     def report_disc(self, read):
         """
         Report simplified discordant pair info.
+
+        Parameters
+        ----------
+        read : pysam.AlignedSegment
         """
 
         # Stack up all discordant pairs at a position, then sort
@@ -105,17 +119,21 @@ class PESRCollection:
 
     def write_disc(self, read):
         """
-        Write discordant pair to file
+        Write discordant pair to file.
         """
         strandA = '-' if read.is_reverse else '+'
         strandB = '-' if read.mate_is_reverse else '+'
 
         self.discfile.write(
-            self.disc_fmt % (
+            (self.disc_fmt % (
                 read.reference_name, read.reference_start, strandA,
-                read.next_reference_name, read.next_reference_start, strandB))
+                read.next_reference_name, read.next_reference_start, strandB)
+             ).encode('utf-8'))
 
     def flush_disc_pairs(self):
+        """
+        Write all logged discordant reads to file.
+        """
         def _key(read):
             return (read.reference_name, read.reference_start,
                     read.next_reference_name, read.next_reference_start)
@@ -131,9 +149,9 @@ class PESRCollection:
         """
         Count splits at each position.
 
-        splits : iter of pysam.AlignedSegment
-        max_dist : int
-            Max distance between consecutive splits before parsing
+        Parameters
+        ----------
+        read : pysam.AlignedSegment
         """
 
         pos, side = get_split_position(read)
@@ -229,57 +247,37 @@ def main():
     parser = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
+
     parser.add_argument('bam', help='Local or S3 path to bam')
+    parser.add_argument('splitfile',
+                        help='Output split counts.')
+    parser.add_argument('discfile',
+                        help='Output discordant pairs.')
+
     parser.add_argument('--index-dir', default=None,
                         help='Directory of local BAM indexes if accessing '
                         'a remote S3 bam.')
     parser.add_argument('-r', '--region',
                         help='Tabix-formatted region to parse')
-    parser.add_argument('fout', help='Output file.')
-    parser.add_argument('discfile')
     parser.add_argument('-z', '--bgzip', default=False, action='store_true',
                         help='bgzip and tabix index output')
+
     args = parser.parse_args()
 
-    bam = load_bam(args.bam)
+    # Load bam from S3 if necessary
+    if args.bam.startswith('s3://'):
+        bam = svu.load_s3bam(args.bam, args.index_dir)
+    else:
+        bam = pysam.AlignmentFile(args.bam)
+
+    # Restrict to region of interest
     if args.region:
         bam = bam.fetch(args.region.encode('utf-8'))
 
-    # Open output file
-    if args.fout in '- stdout'.split():
-        fout = sys.stdout.buffer
-    else:
-        fout = open(args.fout, 'wb')
-
-    # Pass through bgzip if requested
-    if args.bgzip:
-        pipe = subprocess.Popen(['bgzip', '-c'],
-                                stdin=subprocess.PIPE,
-                                stdout=fout)
-        fout = pipe.stdin
-
-    discfile = open(args.discfile, 'w')
-    pesr = PESRCollection(bam, fout, discfile)
-    pesr.collect_pesr()
-
-    if args.bgzip and args.fout not in '- stdout'.split():
-        stdout, stderr = pipe.communicate()
-        tabix = 'tabix -f -s1 -b2 -e2 %s' % args.fout
-        subprocess.call(tabix.split())
-
-
-    # Get splits and pile up
-    #  splits = helpers.collect_splits(bam)
-    #  for counts in count_splits(splits):
-        #  entry = counts + '\n'
-        #  # gzip requires bytes
-        #  if args.gzip:
-            #  entry = entry.encode('utf-8')
-
-        #  fout.write(entry)
-
-    #  fout.close()
-
+    # Collect data and save
+    with svu.BgzipFile(args.splitfile, args.bgzip) as splitfile:
+        with svu.BgzipFile(args.discfile, args.bgzip) as discfile:
+            PESRCollection(bam, splitfile, discfile).collect_pesr()
 
 if __name__ == '__main__':
     main()
