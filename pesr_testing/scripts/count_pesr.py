@@ -10,6 +10,7 @@
 
 import argparse
 import os
+import subprocess
 import sys
 import gzip
 from collections import defaultdict, deque
@@ -106,7 +107,7 @@ class PESRCollection:
         # Flush to disk
         fmt = '%s\t%d\t%s\t%d\n'
         for entry in entries:
-            self.splitfile.write(fmt % entry)
+            self.splitfile.write((fmt % entry).encode('utf-8'))
 
         # Reset split counts
         self.right_split_counts = defaultdict(int)
@@ -163,10 +164,8 @@ def main():
     parser.add_argument('-r', '--region',
                         help='Tabix-formatted region to parse')
     parser.add_argument('fout', help='Output file.')
-    parser.add_argument('-z', '--gzip', default=False, action='store_true',
-                        help='Gzip output')
-    #  , type=argparse.FileType('w'),
-    #                    #  nargs='?', default=sys.stdout)
+    parser.add_argument('-z', '--bgzip', default=False, action='store_true',
+                        help='bgzip and tabix index output')
     args = parser.parse_args()
 
     bam = load_bam(args.bam)
@@ -175,12 +174,25 @@ def main():
 
     # Open output file
     if args.fout in '- stdout'.split():
-        fout = sys.stdout
+        fout = sys.stdout.buffer
     else:
-        fout = open(args.fout, 'w')
+        fout = open(args.fout, 'wb')
+
+    # Pass through bgzip if requested
+    if args.bgzip:
+        pipe = subprocess.Popen(['bgzip', '-c'],
+                                stdin=subprocess.PIPE,
+                                stdout=fout)
+        fout = pipe.stdin
 
     pesr = PESRCollection(bam, fout)
     pesr.collect_pesr()
+
+    if args.bgzip and args.fout not in '- stdout'.split():
+        stdout, stderr = pipe.communicate()
+        tabix = 'tabix -f -s1 -b2 -e2 %s' % args.fout
+        subprocess.call(tabix.split())
+
 
     # Get splits and pile up
     #  splits = helpers.collect_splits(bam)
