@@ -10,14 +10,7 @@ cpdef bint is_excluded(AlignedSegment read):
     return exclude
 
 cpdef bint is_soft_clipped(AlignedSegment read):
-    cdef int op
-    cdef int length
-
-    for op, length in read.cigartuples:
-        if op == 4:
-            return True
-    
-    return False
+    return (read.cigartuples[0][0] == 4) ^ (read.cigartuples[-1][0] == 4)
 
 def collect_splits(bam):
     cdef AlignedSegment read
