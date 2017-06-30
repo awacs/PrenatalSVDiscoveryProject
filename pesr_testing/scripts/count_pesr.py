@@ -17,15 +17,17 @@ from collections import defaultdict, deque
 import numpy as np
 import pysam
 import boto3
+from natsort import natsorted
 from helpers import is_excluded, is_soft_clipped
 import helpers
 from s3bam import load_bam
 
 
 class PESRCollection:
-    def __init__(self, bam, splitfile, max_split_dist=300):
+    def __init__(self, bam, splitfile, discfile, max_split_dist=300):
         self.bam = bam
         self.splitfile = splitfile
+        self.discfile = discfile
 
         # SR evidence
         self.right_split_counts = defaultdict(int)
@@ -33,6 +35,15 @@ class PESRCollection:
         self.prev_split_pos = None
         self.curr_chrom = None
         self.max_split_dist = max_split_dist
+
+        # PE evidence
+        self.disc_pairs = deque()
+        self.observed_disc_names = {}
+        self.curr_disc_pos = -1
+
+        # Format strings
+        self.split_fmt = ''
+        self.disc_fmt = '%s\t%d\t%s\t%s\t%d\t%s\n'
 
     def collect_pesr(self):
         """
@@ -53,7 +64,68 @@ class PESRCollection:
             if is_soft_clipped(read):
                 self.count_split(read)
 
+            # After counting splits, evaluate discordant pairs
+            if not read.is_proper_pair:
+                self.report_disc(read)
+
         self.flush_split_counts()
+        self.flush_disc_pairs()
+
+    def report_disc(self, read):
+        """
+        Report simplified discordant pair info.
+        """
+
+        # Stack up all discordant pairs at a position, then sort
+        # and write out in chunks
+        if read.reference_start != self.curr_disc_pos:
+            self.flush_disc_pairs()
+            self.curr_disc_pos = read.reference_start
+
+        # Avoid double-counting translocations by requiring chrA < chrB
+        if read.reference_id < read.next_reference_id:
+            self.disc_pairs.append(read)
+
+        # If interchromosomal, rely on coordinate to not double count
+        elif read.reference_id == read.next_reference_id:
+            # Report if posA < posB
+            if read.reference_start < read.next_reference_start:
+                self.disc_pairs.append(read)
+
+            # If posA == posB, check if we've seen the read before
+            elif read.reference_start == read.next_reference_start:
+                # If we have, delete the log to save memory and skip the read
+                if read.query_name in self.observed_disc_names:
+                    del self.observed_disc_names[read.query_name]
+
+                # Otherwise, report and log it
+                else:
+                    self.disc_pairs.append(read)
+                    self.observed_disc_names[read.query_name] = 1
+
+    def write_disc(self, read):
+        """
+        Write discordant pair to file
+        """
+        strandA = '-' if read.is_reverse else '+'
+        strandB = '-' if read.mate_is_reverse else '+'
+
+        self.discfile.write(
+            self.disc_fmt % (
+                read.reference_name, read.reference_start, strandA,
+                read.next_reference_name, read.next_reference_start, strandB))
+
+    def flush_disc_pairs(self):
+        def _key(read):
+            return (read.reference_name, read.reference_start,
+                    read.next_reference_name, read.next_reference_start)
+
+        # Sort by chrA/posA and chrB/posB then write to disc
+        for read in natsorted(self.disc_pairs, key=_key):
+            self.write_disc(read)
+
+        # Reset list of reads
+        self.disc_pairs = deque()
 
     def count_split(self, read):
         """
@@ -164,6 +236,7 @@ def main():
     parser.add_argument('-r', '--region',
                         help='Tabix-formatted region to parse')
     parser.add_argument('fout', help='Output file.')
+    parser.add_argument('discfile')
     parser.add_argument('-z', '--bgzip', default=False, action='store_true',
                         help='bgzip and tabix index output')
     args = parser.parse_args()
@@ -185,7 +258,8 @@ def main():
                                 stdout=fout)
         fout = pipe.stdin
 
-    pesr = PESRCollection(bam, fout)
+    discfile = open(args.discfile, 'w')
+    pesr = PESRCollection(bam, fout, discfile)
     pesr.collect_pesr()
 
     if args.bgzip and args.fout not in '- stdout'.split():
