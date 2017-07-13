@@ -1,0 +1,43 @@
+# Key
+batches: ../ref/batch.key
+
+# Input directory
+input_vcfs: ../algorithm_integration/vcfcluster/
+input_beds: ../preprocessing/std_beds/
+
+# Subsets to analyze
+groups: ../ref/quads.519.list
+chroms: ../ref/chroms.test2.list
+pesr_sources:
+    - delly
+    - lumpy
+    - manta
+    - wham
+
+# PE/SR clustering parameters
+vcfcluster:
+    pesr:
+        dist: 300
+        frac: 0.1
+        blacklist: ../ref/b37.lumpy.exclude.4-13.bed.gz
+        svsize: 0
+        svtypes: DEL,DUP,INV,BND
+    pesr_depth:
+        dist: 2000000
+        frac: 0.8
+        blacklist: ../ref/b37.lumpy.exclude.4-13.bed.gz
+        svsize: 0
+        svtypes: DEL,DUP,INV,BND
+
+# PE/SR clustering parameters
+pesr_depth_vcfcluster:
+    dist: 300
+    frac: 0.8
+    blacklist: ../ref/b37.lumpy.exclude.4-13.bed.gz
+    svsize: 0
+    svtypes: DEL,DUP,INV,BND
+
+# Depth clustering parameters
+bedcluster:
+    frac: 0.8
+    flags: "--merge-coordinates"

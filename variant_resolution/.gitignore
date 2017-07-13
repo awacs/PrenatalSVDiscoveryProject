@@ -1,0 +1,7 @@
+# Ignore data directories
+filtered_vcfs/*
+rdtest_vcfs/*
+ref
+unfiltered_vcfs
+vcfcluster/*
+vcflists/*

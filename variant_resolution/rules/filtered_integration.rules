@@ -15,7 +15,7 @@ PESR_SOURCES = config['pesr_sources']
 rule filter_vcfs:
     input:
         vcf='unfiltered_vcfs/{batch}.{source}.{chrom}.vcf',
-        metrics='metric.table'
+        metrics='all_metrics.table'
     output:
         vcf='filtered_vcfs/{batch}.{source}.{chrom}.vcf.gz',
         tbi='filtered_vcfs/{batch}.{source}.{chrom}.vcf.gz.tbi'
@@ -36,46 +36,49 @@ rule filter_vcfs:
 
 def get_batch_vcfs(wildcards):
     """Collect all VCFs for a batch/chrom pairing across sources"""
-    
-    vcf_path = 'filtered_vcfs/{batch}.{source}.{chrom}.vcf.gz'
 
-    return [vcf_path.format(batch=wildcards.batch, source=source,
+    if wildcards.sources == 'pesr':
+        vcf_path = 'filtered_vcfs/{batch}.{source}.{chrom}.vcf.gz'
+
+        return [vcf_path.format(batch=wildcards.batch, source=source,
                             chrom=wildcards.chrom)
-            for source in PESR_SOURCES]
+                for source in PESR_SOURCES]
+    elif wildcards.sources == 'pesr_depth':
+        return ['vcfcluster/pesr/{batch}.{chrom}.vcf.gz'.format(**wildcards),
+                'filtered_vcfs/{batch}.depth.{chrom}.vcf.gz'.format(**wildcards)]
 
 # Make list of all algorithm VCFs for each batch/chrom combo
 rule make_vcf_list:
     input:
         get_batch_vcfs
     output:
-        vcflist='vcflists/{batch}.{chrom}.list'
+        vcflist='vcflists/{sources}/{batch}.{chrom}.list'
     run:
         with open(output[0], 'w') as fout:
             for fname in sorted(input):
                 fout.write(fname + '\n')
 
 # Cluster VCFs across algorithms
-rule pesr_vcfcluster:
+rule vcfcluster:
     """Cluster calls from a single algorithm across samples."""
     input:
         vcflist=rules.make_vcf_list.output.vcflist
     output:
-        vcf='pesr_vcfcluster/{batch}.{chrom}.vcf.gz',
-        tbi='pesr_vcfcluster/{batch}.{chrom}.vcf.gz.tbi',
+        vcf='vcfcluster/{sources}/{batch}.{chrom}.vcf.gz',
+        tbi='vcfcluster/{sources}/{batch}.{chrom}.vcf.gz.tbi',
     params:
-        **config['vcfcluster'],
+        vcfcluster=lambda wildcards: config['vcfcluster'][wildcards.sources],
         prefix=lambda wildcards: '{0}'.format(wildcards.batch)
     shell:
         """
         svtools vcfcluster {input} stdout \
             -p {params.prefix} \
-            -d {params.dist} \
-            -f {params.frac} \
-            -x {params.blacklist} \
-            -z {params.svsize} \
-            -t {params.svtypes} \
+            -d {params.vcfcluster[dist]} \
+            -f {params.vcfcluster[frac]} \
+            -x {params.vcfcluster[blacklist]} \
+            -z {params.vcfcluster[svsize]} \
+            -t {params.vcfcluster[svtypes]} \
           | vcf-sort -c \
           | bgzip -c > {output.vcf};
         tabix -p vcf {output.vcf};
         """
-

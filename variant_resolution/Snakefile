@@ -20,5 +20,5 @@ wildcard_constraints:
 
 rule all:
     input:
-        expand('pesr_vcfcluster/{batch}.{chrom}.vcf.gz',
+        expand('vcfcluster/pesr_depth/{batch}.{chrom}.vcf.gz',
                batch=BATCHES, chrom=CHROMS)
