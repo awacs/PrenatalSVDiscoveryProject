@@ -72,7 +72,39 @@ def extract_breakpoints(vcfpath, IDs):
     return bkpts
 
 
-def cx_link(vcfpath, bkpt_window=1000):
+def vcf2bedtool(vcfpath):
+    """
+    Wrap VCF as a bedtool. Necessary as pybedtools does not support SV in VCF.
+
+    Parameters
+    ----------
+    vcfpath : str
+        File path to VCF
+
+    Returns
+    -------
+    bt : pybedtools.BedTool
+        SV converted to Bedtool. Ends of BND records are assigned as pos + 1.
+        Included columns: chrom, start, end, name, svtype, strands
+    """
+
+    vcf = pysam.VariantFile(vcfpath)
+
+    # Convert each record in vcf to bed entry
+    def _converter():
+        bed = '{0}\t{1}\t{2}\t{3}\t{4}\t{5}\n'
+        for record in vcf:
+            if record.info['SVTYPE'] == 'BND':
+                end = record.pos + 1
+            else:
+                end = record.info['END']
+            yield bed.format(record.chrom, record.pos, end, record.id,
+                             record.info['SVTYPE'], record.info['STRANDS'])
+
+    return pbt.BedTool(_converter()).saveas()
+
+
+def cx_link(vcfpath, bkpt_window=100):
     """
     Parameters
     ----------
@@ -80,21 +112,20 @@ def cx_link(vcfpath, bkpt_window=1000):
         Path to breakpoint VCF
     """
 
-    bt = pbt.BedTool(vcfpath)
+    bt = vcf2bedtool(vcfpath)
 
     # Identify breakpoints which overlap within specified window
-    overlap = bt.cut(range(9)).window(bt.cut(range(9)), w=bkpt_window).saveas()
-    #  overlap = bt.cut(range(9)).intersect(bt.cut(range(9)), wa=True, wb=True).saveas()
+    overlap = bt.window(bt, w=bkpt_window).saveas()
 
     # Exclude self-hits
-    overlap = overlap.filter(lambda b: b.fields[2] != b.fields[11]).saveas()
+    overlap = overlap.filter(lambda b: b.fields[3] != b.fields[9]).saveas()
 
     # Restrict to overlaps involving a BCA breakpoint
-    cnvtypes = '<DEL> <DUP>'.split()
+    cnvtypes = 'DEL DUP'.split()
     overlap = overlap.filter(lambda b: b.fields[4] not in cnvtypes).saveas()
 
     # Get linked variant IDs
-    links = [(b[2], b[11]) for b in overlap.intervals]
+    links = [(b[3], b[9]) for b in overlap.intervals]
     linked_IDs = natsort.natsorted(set(itertools.chain.from_iterable(links)))
     linked_IDs = np.array(linked_IDs)
 
