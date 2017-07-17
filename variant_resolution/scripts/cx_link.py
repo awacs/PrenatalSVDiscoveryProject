@@ -19,6 +19,59 @@ import natsort
 import svtools.utils as svu
 
 
+def shared_samples(recA, recB, min_thresh=0.5, max_thresh=0.8):
+    samplesA = set(svu.get_called_samples(recA))
+    samplesB = set(svu.get_called_samples(recB))
+
+    shared = samplesA & samplesB
+    fracA = len(shared) / len(samplesA)
+    fracB = len(shared) / len(samplesB)
+
+    min_frac, max_frac = sorted([fracA, fracB])
+
+    return min_frac >= min_thresh and max_frac >= max_thresh
+
+
+def extract_breakpoints(vcfpath, IDs):
+    """
+    Extract all VCF records in list of IDs
+    (Assumes VCF is sorted by variant ID)
+
+    Parameters
+    ----------
+    vcfpath : str
+        Path to VCF
+    IDs : list of str
+        Variant IDs to extract
+
+    Returns
+    -------
+    bkpts : list of pysam.VariantRecord
+    """
+
+    vcf = pysam.VariantFile(vcfpath)
+    n_bkpts = len(IDs)
+    bkpts = np.empty(n_bkpts, dtype=object)
+    idx = 0
+
+    for record in vcf:
+        if record.id in IDs:
+            bkpts[idx] = record
+            idx += 1
+            if idx == n_bkpts:
+                break
+
+    # TODO: fix upstream VCF output so input IDs are sorted
+    #  for record in vcf:
+    #      if record.id == IDs[idx]:
+    #          bkpts[idx] = record
+    #          idx += 1
+    #          if idx == n_bkpts:
+    #              break
+
+    return bkpts
+
+
 def cx_link(vcfpath, bkpt_window=1000):
     """
     Parameters
@@ -28,10 +81,10 @@ def cx_link(vcfpath, bkpt_window=1000):
     """
 
     bt = pbt.BedTool(vcfpath)
-    vcf = pysam.VariantFile(vcfpath)
 
     # Identify breakpoints which overlap within specified window
     overlap = bt.cut(range(9)).window(bt.cut(range(9)), w=bkpt_window).saveas()
+    #  overlap = bt.cut(range(9)).intersect(bt.cut(range(9)), wa=True, wb=True).saveas()
 
     # Exclude self-hits
     overlap = overlap.filter(lambda b: b.fields[2] != b.fields[11]).saveas()
@@ -49,21 +102,19 @@ def cx_link(vcfpath, bkpt_window=1000):
     link_key = {ID: i for i, ID in enumerate(linked_IDs)}
     keyed_links = np.array([(link_key[a], link_key[b]) for a, b in links])
 
-    # Extract VariantRecords from VCF (assumes VCF is sorted by variant ID)
-    n_variants = len(linked_IDs)
-    bkpts = np.empty(n_variants, dtype=object)
-    idx = 0
-    for record in vcf:
-        if record.id == linked_IDs[idx]:
-            bkpts[idx] = record
-            idx += 1
-            if idx == n_variants:
-                break
+    # Extract VariantRecords corresponding to breakpoints
+    n_bkpts = len(linked_IDs)
+    bkpts = extract_breakpoints(vcfpath, linked_IDs)
 
     # Build sparse graph from links
-    G = sps.eye(n_variants, dtype=np.uint16, format='lil')
+    G = sps.eye(n_bkpts, dtype=np.uint16, format='lil')
     for i, j in keyed_links:
-        if shared_samples(bkpts[i], bkpts[j], sample_overlap):
+        if bkpts[i] is None or bkpts[j] is None:
+            print('None bkpt')
+            import ipdb
+            ipdb.set_trace()
+
+        if shared_samples(bkpts[i], bkpts[j]):
             G[i, j] = 1
 
     # Generate lists of clustered breakpoints
@@ -72,11 +123,10 @@ def cx_link(vcfpath, bkpt_window=1000):
     for i, c_label in enumerate(comp_list):
         clusters[c_label].append(bkpts[i])
 
+    # Remove clusters of one variant - leftover from shared sample filtering
+    clusters = [c for c in clusters if len(c) > 1]
+
     return clusters
-    for cluster in clusters:
-        cluster = resolve_cluster(cluster)
-    import ipdb
-    ipdb.set_trace()
 
 
 def main():
