@@ -5,3 +5,7 @@ ref
 unfiltered_vcfs
 vcfcluster/*
 vcflists/*
+complex_linking/*
+*.bed
+*.table*
+logs/*

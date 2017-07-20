@@ -12,26 +12,42 @@ with open(config['groups']) as glist:
 
 PESR_SOURCES = config['pesr_sources']
 
+localrules: all, make_vcf_list
+
 rule filter_vcfs:
     input:
         vcf='unfiltered_vcfs/{batch}.{source}.{chrom}.vcf',
-        metrics='all_metrics.table'
+        metrics='all_metrics.table',
+        cnv_metrics='metric.table',
+        bca_metrics='BCA.table'
     output:
         vcf='filtered_vcfs/{batch}.{source}.{chrom}.vcf.gz',
         tbi='filtered_vcfs/{batch}.{source}.{chrom}.vcf.gz.tbi'
     shell:
+        # awk '(($2=="Pass" || $2=="NA") && 
+        #       $3=="Pass" && 
+        #       $4=="Pass" &&
+        #       ($5=="Pass" || $5=="NA"))' {input.metrics} \
+        # fgrep -e "Pass" {input.metrics} \
+        # awk '(($3=="Pass" || $4=="Pass") && ($5=="Pass"))' {input.metrics} \
         """
-        awk '(($2=="Pass" || $2=="NA") && 
-              $3=="Pass" && 
-              $4=="Pass" &&
-              ($5=="Pass" || $5=="NA"))' {input.metrics} \
+        cat \
+            <(awk '(($3=="Pass" || $4=="Pass") && ($5=="Pass"))' {input.cnv_metrics}) \
+            <(fgrep -e "Pass" {input.bca_metrics} | sed -e 's/ /\\t/g') \
           | cut -f1 \
           | fgrep -w -f - {input.vcf} \
           | cat <(sed -n -e '/^#/p' {input.vcf}) - \
           | vcf-sort -c \
+          | awk '{{split($8, info, ";");
+                   split(info[1], svtype, "=");
+                   split(info[7], svlen, "=");
+                   if (svtype[2] == "BND" || svtype[2] == "INV" || svlen[2] >= 1000 || $1 ~ "^#") {{
+                     print $0;
+                   }};
+                 }}' \
           | bgzip -c \
           > {output.vcf};
-        tabix -p vcf {output.vcf}
+        tabix -f -p vcf {output.vcf}
         """
 
 def get_batch_vcfs(wildcards):
@@ -81,4 +97,17 @@ rule vcfcluster:
           | vcf-sort -c \
           | bgzip -c > {output.vcf};
         tabix -p vcf {output.vcf};
+        """
+
+rule link_cx:
+    input:
+        vcf='vcfcluster/pesr_depth/{batch}.{chrom}.vcf.gz',
+    output:
+        bed='complex_linking/{batch}.{chrom}.bed',
+        stats='complex_linking/{batch}.{chrom}.stats',
+    params:
+        prefix=lambda wildcards: '{batch}_CPX_{chrom}'.format(**wildcards)
+    shell:
+        """
+        svtools link-cx -p {params.prefix} {input.vcf} {output.bed} {output.stats}
         """
