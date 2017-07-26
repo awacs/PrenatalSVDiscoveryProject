@@ -30,6 +30,8 @@ rule filter_vcfs:
         #       ($5=="Pass" || $5=="NA"))' {input.metrics} \
         # fgrep -e "Pass" {input.metrics} \
         # awk '(($3=="Pass" || $4=="Pass") && ($5=="Pass"))' {input.metrics} \
+        #     <(awk '(($3=="Pass" || $4=="Pass") && ($5=="Pass"))' {input.cnv_metrics}) \
+        #     <(fgrep -e "Pass" {input.bca_metrics} | sed -e 's/ /\\t/g') \
         """
         cat \
             <(awk '(($3=="Pass" || $4=="Pass") && ($5=="Pass"))' {input.cnv_metrics}) \
@@ -99,15 +101,15 @@ rule vcfcluster:
         tabix -p vcf {output.vcf};
         """
 
-rule link_cx:
+rule link_cpx:
     input:
         vcf='vcfcluster/pesr_depth/{batch}.{chrom}.vcf.gz',
     output:
         bed='complex_linking/{batch}.{chrom}.bed',
-        stats='complex_linking/{batch}.{chrom}.stats',
+        unresolved='complex_linking/{batch}.{chrom}.unresolved',
     params:
         prefix=lambda wildcards: '{batch}_CPX_{chrom}'.format(**wildcards)
     shell:
         """
-        svtools link-cx -p {params.prefix} {input.vcf} {output.bed} {output.stats}
+        svtools link-cpx -p {params.prefix} {input.vcf} {output.bed} {output.unresolved}
         """
