@@ -1,4 +1,4 @@
-# Algorithm integration
+# 01. Algorithm integration
 
 This workflow integrates all variant calls in a batch of samples on a
 per-algorithm basis.
