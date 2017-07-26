@@ -7,9 +7,17 @@ data/*
 logs/*
 *.bed.gz
 *.tbi
+du_logs/*
 
 # Or symlinks to data
 data
+
+# Or cython files
+**/build/*
+*.so
+*.c
+
+**/__pycache__/*
 
 # Do track each module's scripts, Snakefiles, configurations, and READMEs
 !*/scripts/
@@ -29,3 +37,4 @@ test*
 # Ignore algorithm integration data directories
 algorithm_integration/depth/*
 algorithm_integration/pesr/*
+

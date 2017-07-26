@@ -2,6 +2,9 @@
 bed: sr_testing.completed.with_bg.bed
 bam_indexes: bam_indexes
 
+bam_map: ref/sample_bams.list       # Two column map {sample: bam}
+recurse_counts: False               # Don't run per-sample contigs in parallel
+
 samples: ref/samples.2076.list
 chroms: ref/chroms.all.list
 #samples: ref/samples.test.list
