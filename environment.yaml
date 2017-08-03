@@ -70,6 +70,5 @@ dependencies:
   - prompt-toolkit==1.0.14
   - pybedtools==0.7.10
   - pygments-style-solarized==0.1.1
-  - svtools (/PHShome/my520/code/svtools)==0.1
 prefix: /apps/lab/miket/anaconda/4.0.5/envs/pipeline_test
 
