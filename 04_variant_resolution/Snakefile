@@ -20,5 +20,5 @@ wildcard_constraints:
 
 rule all:
     input:
-        expand('complex_linking/{batch}.{chrom}.bed',
+        expand('complex_linking/{batch}.{chrom}.resolved.vcf',
                batch=BATCHES, chrom=CHROMS)

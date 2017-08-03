@@ -5,3 +5,5 @@ __default__:
     flags: ""
 vcfcluster:
     queue: normal
+link_cpx:
+    queue: normal
