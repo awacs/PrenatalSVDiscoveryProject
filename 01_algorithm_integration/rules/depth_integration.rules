@@ -50,3 +50,16 @@ rule make_depth_rdtest_beds:
           | cat <(echo -e "#chrom start end name samples svtype" | sed -e 's/ /\\t/g') - \
           > {output}
         """
+
+rule make_depth_vcfs:
+    input:
+        bed='rdtest_beds/{batch}.depth.{chrom}.bed'
+    output:
+        vcf='vcfcluster/{batch}.depth.{chrom}.vcf.gz',
+        tbi='vcfcluster/{batch}.depth.{chrom}.vcf.gz.tbi',
+    params:
+        samples=lambda wildcards: config['batchlists'][wildcards.batch]
+    shell:
+        """
+        svtools rdtest2vcf {input.bed} {params.samples} {output.vcf}
+        """

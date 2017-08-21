@@ -1,102 +1,29 @@
 #!/bin/bash
 
-wrkdir=/PHShome/hb875/SFARI/DeepSeq/HarrisonCompare/GT_Filtering/clean_pipeline
-cd $wrkdir
-
-##see earler versions for creating required files##
-
-##Generate initial datasets##
-cat /data/talkowski/Samples/SFARI/deep_sv/asc_540/sv-pipeline/rdtest/split_beds/Phase1*>$wrkdir/Phase1.bed
-
-##Remove regions with poor sequencing just for training of data and get size to add to metrics##
-##remove X && Y###
-module load bedtools2/2.25.0
-egrep -hv "^X|^Y" /PHShome/hb875/SFARI/DeepSeq/HarrisonCompare/GT_Filtering/Phase1.bed| sort -k1,1 -k2,2n| coverageBed -a - -b /data/talkowski/rlc47/src/GRch37.segdups_gaps_abParts_heterochrom.lumpy.exclude.bed -sorted |awk '{print  $4 "\t" $3-$2 "\t" $NF}'|cat <(echo -e "name" '\t' "size" '\t'"poor_region_cov") ->filter_region_wSize.bed
-
-##breakpoint check for filtering##
-
-cat /data/talkowski/rlc47/src/GRCh37.*.RMSK.merged.bed /data/talkowski/rlc47/src/GRch37.segdups_gaps_abParts_heterochrom.lumpy.exclude.bed|sort -k1,1 -k2,2n>breakpoint.rmsk.bed
-
-egrep -hv "^X|^Y" /PHShome/hb875/SFARI/DeepSeq/HarrisonCompare/GT_Filtering/Phase1.bed|awk '{print $1,$2,$2+1,$4"\n"$1,$3-1,$3,$4}'| tr ' ' '\t'|sort -k1,1 -k2,2n|bedtools intersect -sorted -a - -b breakpoint.rmsk.bed|awk '{print $4}'|sort -u>one_end_linesine_txt
-
-##get rid of parent only variants when checking  inhrate##
-
-for vcf in /data/talkowski/Samples/SFARI/deep_sv/asc_540/sv-pipeline/01_algorithm_integration/vcfcluster/Phase1.*vcf
-do
-/data/talkowski/Samples/SFARI/deep_sv/asc_540/sv-pipeline/01_algorithm_integration/scripts/get_called_samples.py $vcf >>SV.samples
-done
-
-
-##create overall metrics file with all metrics and variant types## 
-cat /data/talkowski/Samples/SFARI/deep_sv/asc_540/sv-pipeline/03_genotyping/metrics/Phase1.*.metrics| \
-    ##remove duplicate lines##	\
-    awk '!seen[$0]++'| \
-    ##create metric file remove variants where all samples are called to have a CNV## \
-    fgrep  -v "All_samples_called_CNV_no_analysis"| \
-    ####fix BAF p-value to be on log scale to match others### \
-    awk '{if ($34!="NA" && $34!="BAF_KS_pval") {$34=-log($34)/log(10)} print}' | \
-    ####flip sign for BAF DEL log likiehood so postive is more significant ### \
-    awk '{if ($31!="NA" && $31!="BAF_del_loglik") {$31=-$31} print}' | \
-    ##replace inf from -log10 p-value with max -log10(P) of 300## \
-    sed 's/inf/300/g' | \
-    ##add poor region coverage and size as metrics at the end## \
-    sort -k1,1 |join -a 1 -j 1 - filter_region_wSize.bed | \
-    ##add size and coverage NA for none CNV sv types## \
-    awk '{if (NF==41) print $0,"NA","NA";else print}'| \
-    ##remove chr X and Y \
-    awk -F"_" '{if ($3!="X" && $3!="Y" && $4!="X" && $4!="Y" ) print}' | \
-    ##get rid of straggler header line## \
-    tr ' ' '\t'|sort -k1,1|tail -n +2> $wrkdir/Phase1.all.metrics
-
-
-##remove BAF failures (variants which BAF can not be assessed due to # of snps or ROH)##
-cat $wrkdir/Phase1.all.metrics|fgrep DEL|awk '{if ($30 =="NA" || $31 =="NA") print $1 }'>$wrkdir/BAF/Phase1.BAF.noassess
-
-cat $wrkdir/Phase1.all.metrics|fgrep DUP|awk '{if ($33 =="NA" || $34 =="NA") print $1}'>>$wrkdir/BAF/Phase1.BAF.noassess
-
-###Start with BAF##
-##Build Training set##
-##del restrict to greater than 5 kb for training and in clean regions##
-mkdir $wrkdir/BAF
-
-fgrep DEL $wrkdir/Phase1.all.metrics|fgrep -wvf $wrkdir/BAF/Phase1.BAF.noassess|awk '{if ($NF<0.3 && $(NF-1)>=5000 && $26<0.15) print $1,"Fail",$30,$31; else if ($NF<0.3 && $(NF-1)>=5000 && $26>0.4) print $1,"Pass",$30,$31 }'|cat <(awk '{print "name","Status",$30,$31}' $wrkdir/Phase1.all.metrics|head -n 1) - |tr ' ' '\t'>$wrkdir/BAF/BAF.del.metrics
-
-fgrep DEL $wrkdir/Phase1.all.metrics|awk '{if ($(NF-1)>=5000 ) print}'|fgrep -wvf $wrkdir/BAF/Phase1.BAF.noassess|cat <(head -n 1 $wrkdir/Phase1.all.metrics) - >$wrkdir/BAF/BAF.del.all.metrics
-
-fgrep DUP $wrkdir/Phase1.all.metrics|fgrep -wvf $wrkdir/BAF/Phase1.BAF.noassess|awk '{if ($NF<0.3 && $(NF-1)>=5000 && $26<0.15) print $1,"Fail",$33,$34; else if ($NF<0.3 && $(NF-1)>=5000 && $26>0.4) print $1,"Pass",$33,$34 }'|cat <(awk '{print "name","Status",$33,$34}' $wrkdir/Phase1.all.metrics|head -n 1) - |tr ' ' '\t'>$wrkdir/BAF/BAF.dup.metrics
-
-fgrep DUP $wrkdir/Phase1.all.metrics|awk '{if ($(NF-1)>=5000 ) print}'|fgrep -wvf $wrkdir/BAF/Phase1.BAF.noassess|cat <(head -n 1 $wrkdir/Phase1.all.metrics) - >$wrkdir/BAF/BAF.dup.all.metrics
-
-##create file for ROC cut_off structure##
-##Dels first filter on BAF_snp_ratio then BAF_del_loglik##
-echo "BAF_snp_ratio">$wrkdir/BAF/ROC.del.indep.txt 
-echo "BAF_del_loglik">$wrkdir/BAF/ROC.del.dep.txt 
-
-##Dup first filter on BAF_KS_stat then BAF_KS_pval##
-echo "BAF_KS_stat">$wrkdir/BAF/ROC.dup.indep.txt 
-echo "BAF_KS_pval">$wrkdir/BAF/ROC.dup.dep.txt 
-
-##Run model##
-##deletions##
-Rscript /PHShome/hb875/talkowski/hb875/code/RF_git/RandomForest.R $wrkdir/BAF/BAF.del.metrics $wrkdir/BAF/BAF.del.all.metrics 1343124 $wrkdir/BAF/BAF.del $wrkdir/BAF/ROC.del.indep.txt $wrkdir/BAF/ROC.del.dep.txt 
-
-##duplications##
-Rscript /PHShome/hb875/talkowski/hb875/code/RF_git/RandomForest.R $wrkdir/BAF/BAF.dup.metrics $wrkdir/BAF/BAF.dup.all.metrics 1343124 $wrkdir/BAF/BAF.dup $wrkdir/BAF/ROC.dup.indep.txt $wrkdir/BAF/ROC.dup.dep.txt 
 
 ##SR##
 mkdir $wrkdir/SR
 
 ##require to pass both initial RD and BAF to be considered valid and fail both to be invalid###
-##remove events as failing that have potential PE support (p<0.05)##
-join -j 1 <(cat $wrkdir/BAF/BAF.del.metrics $wrkdir/BAF/BAF.dup.metrics|cut -f -1,2|sort -k1,1 ) <(cat $wrkdir/BAF/BAF.del.pred $wrkdir/BAF/BAF.dup.pred|sort -k1,1)|egrep -v "name|depth"|awk '{if ($2=="Fail" && $3<0.5) print $1"\t"$3;else if ($2=="Pass" && $3>=0.5) print $1"\t"$3}'|awk '{if ($2>=0.9) print $1 "\t" "Pass";else if ($2<=0.1) print $1 "\t" "Fail"}'|sort -k1,1|join -j 1 - <(awk '{print $1,$11,$14,$17,$6}' $wrkdir/Phase1.all.metrics|sort -k1,1)|awk '{if ($2=="Fail" && $NF<1.30103) print $1,$2,$3,$4,$5 ;else if ($2=="Pass") print $1,$2,$3,$4,$5}'|cat <(awk '{print $1,"Status",$11,$14,$17}' $wrkdir/Phase1.all.metrics|head -n 1) - |tr ' ' '\t'>$wrkdir/SR/SR.metrics
+##remove events as failing that have potential PE support##
+fgrep -w -f <(awk '{print $1}' $wrkdir/BAF/BAF.d*.metrics) \
+    <(cat $wrkdir/BAF/BAF.del.pred $wrkdir/BAF/BAF.dup.pred) \
+  | awk '{if ($2>=0.9) print $1 "\t" "Pass";else if ($2<=0.1) print $1 "\t" "Fail"}' \
+  | egrep -v "name|depth" \
+  | sort -k1,1 \
+  | join -j 1 - <(awk '{print $1,$11,$14,$17,$6}' $wrkdir/Phase1.all.metrics|sort -k1,1) \
+  | awk '{if ($2=="Fail" && $NF<1.30103) print $1,$2,$3,$4,$5 ;else if ($2=="Pass") print $1,$2,$3,$4,$5}' \
+  | cat <(awk '{print $1,"Status",$11,$14,$17}' $wrkdir/Phase1.all.metrics|head -n 1) - \
+  | tr ' ' '\t' \
+  > $wrkdir/SR/SR.metrics
 
 ##print all variants to be assessed by SR metrics (exclude depth only and wham INV and BND), NOTE: redundant with PE##
 
 awk '{if ($1!~"depth" && !($1~"wham" && ($2~"INV" || $2~"BND"))) print}' $wrkdir/Phase1.all.metrics>$wrkdir/SR/SR.all.metrics
 
 ##Dup first filter on SR_sum_log_pval then SR_sum_bg_median##
-echo "SR_sum_log_pval" "\t" "gt" >$wrkdir/SR/ROC.indep.txt 
-echo "" >$wrkdir/SR/ROC.dep.txt 
+echo "SR_sum_log_pval">$wrkdir/SR/ROC.indep.txt 
+echo "SR_sum_bg_median">$wrkdir/SR/ROC.dep.txt 
 
 ## Build SR random forest model and test all variants##
 
@@ -188,11 +115,11 @@ echo "RD_log_2ndMaxP">$wrkdir/rd.depth.dup/ROC.dep.clean.txt
 
 ##Clean Random Forest##
 
-Rscript /PHShome/hb875/talkowski/hb875/code/RF_git/RandomForest.R $wrkdir/rd.depth.dup/rd.gt5000.depth.dup.clean.metrics $wrkdir/rd.depth.dup/rd.all.gt5000.depth.dup.clean.metrics 1343124 $wrkdir/rd.depth.dup/rd.gt5000.depth.dup.clean $wrkdir/rd.depth.dup/ROC.indep.clean.txt $wrkdir/rd.depth.dup/ROC.dep.clean.txt
+Rscript /PHShome/hb875/talkowski/hb875/code/RF_git/RandomForest.R $wrkdir/rd.depth.dup/rd.gt5000.depth.dup.clean.metrics $wrkdir/rd.depth.dup/rd.all.gt5000.depth.dup.clean.metrics 1343124 $wrkdir/rd.depth.dup/rd.gt5000.depth.dup.clean $wrkdir/rd.depth.dup/ROC.indep.clean.txt $wrkdir/rd.depth.dup/ROC.dep.clean.txt  $wrkdir/rd.depth.dup/rd.gt5000.depth.dup.clean.cutoffs 
 
 ##Poor Random Forest##
 
-Rscript /PHShome/hb875/talkowski/hb875/code/RF_git/RandomForest.R $wrkdir/rd.depth.dup/rd.gt5000.depth.dup.clean.metrics $wrkdir/rd.depth.dup/rd.all.gt5000.depth.dup.poor.metrics 1343124 $wrkdir/rd.depth.dup/rd.gt5000.depth.dup.poor $wrkdir/rd.depth.dup/ROC.indep.clean.txt $wrkdir/rd.depth.dup/ROC.dep.clean.txt $wrkdir/rd.depth.dup/rd.gt5000.depth.dup.clean.cutoffs  
+Rscript /PHShome/hb875/talkowski/hb875/code/RF_git/RandomForest.R $wrkdir/rd.depth.dup/rd.gt5000.depth.dup.clean.metrics $wrkdir/rd.depth.dup/rd.all.gt5000.depth.dup.poor.metrics 1343124 $wrkdir/rd.depth.dup/rd.gt5000.depth.dup.poor $wrkdir/rd.depth.dup/ROC.indep.clean.txt $wrkdir/rd.depth.dup/ROC.dep.clean.txt   
 
 ##PE##
 ##train PE on BAF results, remove any discordant##
@@ -211,10 +138,10 @@ ln -s $wrkdir/SR/SR.all.cnv.metrics $wrkdir/PE/PE.all.cnv.metrics
 
 ##Dup first filter on PE_log_pval then PE_bg_median##
 echo "PE_log_pval">$wrkdir/PE/ROC.indep.txt 
-echo "">$wrkdir/PE/ROC.dep.txt 
+echo "PE_bg_median">$wrkdir/PE/ROC.dep.txt 
 
 ##Generate PE RF and make predictions##
-Rscript /PHShome/hb875/talkowski/hb875/code/RF_git/RandomForest.R $wrkdir/PE/PE.metrics $wrkdir/PE/PE.all.metrics 1343124 $wrkdir/PE/PE $wrkdir/PE/ROC.indep.txt $wrkdir/PE/ROC.dep.txt 
+Rscript /PHShome/hb875/talkowski/hb875/code/RF_git/RandomForest.R $wrkdir/PE/PE.metrics $wrkdir/PE/PE.all.metrics 1343124 $wrkdir/PE/PE $wrkdir/PE/ROC.indep.txt $wrkdir/PE/ROC.dep.txt  
 
 ##second iteration necessary for BAF and SR###
 ##BAF##
@@ -260,10 +187,10 @@ awk '{if ($1!~"depth" && !($1~"wham" && ($2~"INV" || $2~"BND"))) print $1}' $wrk
 
 ##Dup first filter on PE_log_pval then PE_bg_median##
 echo "poiss_p">$wrkdir/PE_SR/ROC.indep.txt 
-echo "">$wrkdir/PE_SR/ROC.dep.txt 
+echo "PE_bg_median_SR_sum_bg_median">$wrkdir/PE_SR/ROC.dep.txt 
 
 
-Rscript /PHShome/hb875/talkowski/hb875/code/RF_git/RandomForest.R $wrkdir/PE_SR/PE_SR.metrics $wrkdir/PE_SR/PE_SR.all.metrics 1343124 $wrkdir/PE_SR/PE_SR $wrkdir/PE_SR/ROC.indep.txt $wrkdir/PE_SR/ROC.dep.txt 
+Rscript /PHShome/hb875/talkowski/hb875/code/RF_git/RandomForest.edit.R $wrkdir/PE_SR/PE_SR.metrics $wrkdir/PE_SR/PE_SR.all.metrics 1343124 $wrkdir/PE_SR/PE_SR $wrkdir/PE_SR/ROC.indep.txt $wrkdir/PE_SR/ROC.dep.txt 
 
 
 ##Put all prediction classes together###
@@ -330,6 +257,8 @@ cat $wrkdir/combined_prob/CNV.PESR.rdgt1kb_combined.p $wrkdir/combined_prob/CNV.
 
 
 cat $wrkdir/combined_prob/BCA.PESR.p $wrkdir/combined_prob/CNV.PESR.nodepth.gt1kb_combined.p|awk '{if ($NF>=.5) print}'|cat <(echo -e "name" '\t' "Probability") - >$wrkdir/combined_prob/combined_BCA.passing.p
+
+
 
 
 ##Mosaic CNV check##

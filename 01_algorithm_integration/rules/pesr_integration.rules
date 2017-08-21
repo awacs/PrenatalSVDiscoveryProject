@@ -22,7 +22,7 @@ def get_batch_vcfs(wildcards):
     groups = BATCH_KEY.loc[BATCH_KEY.batch == batch, 'group'].unique()
     groups = [g for g in groups if g in GROUPS]
     
-    vcf_path = '{input_vcfs}/{source}.{group}.vcf.gz'
+    vcf_path = os.path.join('{input_vcfs}', '{source}.{group}.vcf.gz')
 
     return [vcf_path.format(source=wildcards.source, group=group,
                             input_vcfs=config['input_vcfs']) 
@@ -53,6 +53,8 @@ rule vcfcluster:
     output:
         vcf='vcfcluster/{batch}.{source}.{chrom}.vcf.gz',
         tbi='vcfcluster/{batch}.{source}.{chrom}.vcf.gz.tbi',
+    wildcard_constraints:
+        source='(' + '|'.join(MEI_SOURCES + PESR_SOURCES) + ')'
     params:
         **config['vcfcluster'],
         svtypes=svtypes,
@@ -67,6 +69,7 @@ rule vcfcluster:
             -x {params.blacklist} \
             -z {params.svsize} \
             -t {params.svtypes} \
+            {params.flags} \
           | vcf-sort -c \
           | bgzip -c > {output.vcf};
         tabix -p vcf {output.vcf};

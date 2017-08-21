@@ -28,8 +28,8 @@ rule all:
     input:
         expand('filtered_vcfs/{source}.{group}.vcf.gz',
                source=PESR_SOURCES, group=GROUPS),
-        'qc/aggregate/raw_counts.txt',
-        'qc/aggregate/filtered_counts.txt',
-        expand('std_beds/{batch}.{svtype}.bed.gz',
-               batch=BATCHES, svtype=CNV)
+        #'qc/aggregate/raw_counts.txt',
+        #'qc/aggregate/filtered_counts.txt',
+        #expand('std_beds/{batch}.{svtype}.bed.gz',
+        #       batch=BATCHES, svtype=CNV)
 

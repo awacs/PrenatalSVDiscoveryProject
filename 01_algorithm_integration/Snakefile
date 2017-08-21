@@ -11,7 +11,7 @@ BATCHES = sorted(BATCH_KEY.batch.unique())
 
 PESR_SOURCES = config['pesr_sources']
 SOURCES = PESR_SOURCES + ['depth']
-MEI_SOURCES = config['mei_sources']
+MEI_SOURCES = config['mei_sources'] + PESR_SOURCES
 CNV = config['cnv_types']
 
 with open(config['chroms']) as clist:
@@ -24,7 +24,7 @@ wildcard_constraints:
 
 rule all:
     input:
-        expand('rdtest_beds/{batch}.{source}.{chrom}.bed',
-               batch=BATCHES, source=SOURCES, chrom=CHROMS),
+#        expand('rdtest_beds/{batch}.{source}.{chrom}.bed',
+#               batch=BATCHES, source=SOURCES, chrom=CHROMS),
         expand('vcfcluster/{batch}.{source}.{chrom}.vcf.gz',
-               batch=BATCHES, source=MEI_SOURCES, chrom=CHROMS)
+               batch=BATCHES, source=PESR_SOURCES, chrom=CHROMS)

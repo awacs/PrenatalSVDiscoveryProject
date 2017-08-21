@@ -4,10 +4,10 @@ groups: ref/quads.519.list
 idmap: ref/519families_idmapping
 
 pesr_sources:
-    - delly
-    - lumpy
-    - manta
-    - wham
+    # - delly
+    # - lumpy
+    # - manta
+    # - wham
     - melt
 depth_sources:
     - cnmops

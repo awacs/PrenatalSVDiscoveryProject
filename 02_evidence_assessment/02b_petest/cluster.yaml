@@ -3,5 +3,5 @@ __default__:
     log: "logs/{rule}.{wildcards}.out"
     jobname: "{rule}.{wildcards}"
     flags: ""
-petest:
+petest_autosomes:
     queue: normal

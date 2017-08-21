@@ -1,6 +1,10 @@
 
+"""
+Consolidate variant metrics.
+"""
+
 def input_vcf(wildcards):
-    path='{input_vcfs}/{batch}.{source}.{chrom}.vcf'
+    path='{input_vcfs}/{batch}.{source}.{chrom}.vcf.gz'
     path = path.format(input_vcfs=config['input_vcfs'], batch=wildcards.batch,
                        source=wildcards.source, chrom=wildcards.chrom)
     return path
@@ -51,9 +55,26 @@ rule aggregate_vcf:
             {output}
         """
 
+rule aggregate_melt:
+    output:
+        'metrics/{batch}.{source}.{chrom}.metrics'
+    params:
+        vcf=input_vcf,
+        **get_testfiles('sr'.split())
+    wildcard_constraints:
+        source='melt'
+    shell:
+        """
+        ./scripts/aggregate.py \
+            -s {params.srtest} \
+            -v {params.vcf} \
+            {output}
+        """
+
+# TODO: put whitelists in sane location
 def batch_list(wildcards):
     batch = wildcards.batch
-    return '../rdtest/whitelists/{0}.list'.format(batch)
+    return '{1}/../whitelists/{0}.list'.format(batch, config['rdtest'])
 
 rule aggregate_bed:
     output:

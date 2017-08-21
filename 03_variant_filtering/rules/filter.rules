@@ -1,0 +1,21 @@
+
+rule filter_vcfs:
+    input:
+        vcf='unfiltered_vcfs/{batch}.{source}.{chrom}.vcf',
+        cnv='combined_CNV.passing.p',
+        bca='combined_BCA.passing.p'
+    output:
+        vcf='filtered_vcfs/{batch}.{source}.{chrom}.vcf.gz',
+        tbi='filtered_vcfs/{batch}.{source}.{chrom}.vcf.gz.tbi'
+    shell:
+        """
+        cat <( sed -e '1d' {input.cnv}) <(sed -e '1d' {input.bca}) \
+          | cut -f1 \
+          | fgrep -w -f - {input.vcf} \
+          | cat <(sed -n -e '/^#/p' {input.vcf}) - \
+          | vcf-sort -c \
+          | bgzip -c \
+          > {output.vcf};
+        tabix -f -p vcf {output.vcf}
+        """
+

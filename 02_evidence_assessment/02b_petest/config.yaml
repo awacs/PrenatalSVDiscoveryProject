@@ -1,15 +1,17 @@
 # Key
-batches: ../ref/batch.key
+batches: ../../ref/batch.key
 
-input_beds: ../algorithm_integration/rdtest_beds
-input_vcfs: ../algorithm_integration/vcfcluster
+input_beds: ../../01_algorithm_integration/rdtest_beds
+input_vcfs: ../../01_algorithm_integration/vcfcluster
 
 pe_counts: 'pe_counts/cohort.txt.gz'
 
 # Subsets to analyze
-groups: ../ref/quads.519.list
-chroms: ../ref/chroms.all.list
+groups: ../../ref/quads.519.list
+chroms: ../../ref/chroms.all.list
+
 pesr_sources:
+    - melt
     - delly
     - lumpy
     - manta

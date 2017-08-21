@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-#
+#freq
 # Copyright © 2017 Matthew Stone <mstone5@mgh.harvard.edu>
 # Distributed under terms of the MIT license.
 
@@ -29,7 +29,8 @@ def process_rdtest(rdtest):
 
     # Replace strings with NA
     for col in numeric_cols:
-        repl = 'All_samples_called_CNV_no_analysis'
+        repl = ['All_samples_called_CNV_no_analysis',
+                'No_samples_for_analysis']
         rdtest[col] = rdtest[col].replace(repl, np.nan).astype(np.float)
 
     rdtest['log_pval'] = -np.log10(rdtest.P)
@@ -79,6 +80,7 @@ def process_baftest(baftest):
     baftest = baftest.drop(skip_cols, axis=1)
 
     baftest['KS_log_pval'] = (- np.log10(baftest.KS_pval)).abs()
+    baftest['del_loglik'] = -baftest.del_loglik
 
     repl = 'Potential ROHregion or reference error'
     baftest.delstat = baftest.delstat.replace(repl, 'Ref_error')
@@ -142,6 +144,8 @@ def process_metadata(variants, bed=False, batch_list=None):
     for variant in variants:
         # bed record
         if bed:
+            if variant.startswith('#'):
+                continue
             data = variant.strip().split()
             called = data[4].split(',')
             name = data[3]
@@ -201,7 +205,7 @@ def make_columns():
                 'posA_bg_median posB_bg_median sum_bg_median').split()
     SR_names = ['SR_' + name for name in SR_names]
 
-    BAF_names = ('delstat snp_ratio del_loglik dupstat KS_stat KS_pval '
+    BAF_names = ('delstat snp_ratio del_loglik dupstat KS_stat KS_log_pval '
                  'total_case_snps total_snps n_nonROH_cases n_samples '
                  'mean_control_snps n_nonROH_controls n_controls').split()
     BAF_names = ['BAF_' + name for name in BAF_names]
@@ -221,8 +225,8 @@ def main():
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('-v', '--variants', required=True, help='Default VCF')
-    parser.add_argument('-r', '--RDtest', required=True)
-    parser.add_argument('-b', '--BAFtest', required=True)
+    parser.add_argument('-r', '--RDtest')
+    parser.add_argument('-b', '--BAFtest')
     parser.add_argument('-s', '--SRtest')
     parser.add_argument('-p', '--PEtest')
     parser.add_argument('--batch-list', type=argparse.FileType('r'))
@@ -250,8 +254,12 @@ def main():
                  'n_nonROH_controls n_controls').split()
 
     for dtype in dtypes:
+        dtable = getattr(args, dtype + 'test')
+        if dtable is None:
+            continue
+
         names = BAF_names if dtype == 'BAF' else None
-        df = pd.read_table(getattr(args, dtype + 'test'), names=names)
+        df = pd.read_table(dtable, names=names)
 
         df = preprocess(df, dtype)
         df = df.rename(columns=lambda c: dtype + '_' + c if c != 'name' else c)
@@ -262,8 +270,14 @@ def main():
     evidence = metadata.join(evidence, how='outer', sort=True)
     evidence = evidence.reset_index().rename(columns={'index': 'name'})
 
-    if not args.bed:
+    has_petest = (getattr(args, 'PEtest') is not None)
+    has_srtest = (getattr(args, 'SRtest') is not None)
+    if not args.bed and has_petest and has_srtest:
         evidence = add_pesr(evidence)
+
+    # Replace infinite log-pvals
+    LOG_CEIL = 300
+    evidence = evidence.replace(np.inf, LOG_CEIL)
 
     evidence = evidence.reindex(columns=make_columns())
     evidence.to_csv(args.fout, index=False, sep='\t', na_rep='NA')

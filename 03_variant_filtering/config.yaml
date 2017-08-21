@@ -2,18 +2,30 @@
 batches: ../ref/batch.key
 
 # Test stats directories
-rdtest: "../rdtest/rdtest"
-srtest: "../srtest/srtest"
-petest: "../petest/petest"
-baftest: "../baftest/baftest"
-input_vcfs: "../algorithm_integration/vcfcluster"
-input_beds: "../algorithm_integration/rdtest_beds"
+rdtest: "../02_evidence_assessment/02a_rdtest/rdtest"
+petest: "../02_evidence_assessment/02b_petest/petest"
+srtest: "../02_evidence_assessment/02c_srtest/srtest"
+baftest: "../02_evidence_assessment/02d_baftest/baftest"
+input_vcfs: "../01_algorithm_integration/vcfcluster"
+input_beds: "../01_algorithm_integration/rdtest_beds"
 
 # Subsets to analyze
 groups: ../ref/quads.519.list
-chroms: ../ref/chroms.all.list
+#chroms: ../ref/chroms.test.list
+chroms: ../ref/chroms.allosomes.list
 pesr_sources:
     - delly
     - lumpy
     - manta
     - wham
+
+blacklist: /data/talkowski/rlc47/src/GRch37.segdups_gaps_abParts_heterochrom.lumpy.exclude.bed
+random-forest: /PHShome/my520/code/RandomForest/RandomForest.R
+seed: 1343124
+
+rf-features:
+    baf:
+        dep:
+            - BAF_snp_ratio
+        indep:
+            - BAF_del_loglik

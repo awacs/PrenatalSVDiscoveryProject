@@ -1,15 +1,12 @@
 # Key
-batches: ../ref/batch.key
+batches: ../../ref/batch.key
 
-input_beds: ../algorithm_integration/rdtest_beds
-input_vcfs: ../algorithm_integration/vcfcluster
-
-# Table of variant counts per wildcard combination
-variant_counts: variant_counts.txt
+input_beds: ../../01_algorithm_integration/rdtest_beds
+input_vcfs: ../../01_algorithm_integration/vcfcluster
 
 # Subsets to analyze
-groups: ../ref/quads.519.list
-chroms: ../ref/chroms.all.list
+groups: ../../ref/quads.519.list
+chroms: ../../ref/chroms.allosomes.list
 pesr_sources:
     - delly
     - lumpy
@@ -17,7 +14,7 @@ pesr_sources:
     - wham
 
 # RdTest parameters
-rdtest: scripts/RdTest.R
+rdtest: /PHShome/my520/code/RdTest/RdTest.R
 coveragefile: /data/talkowski/Samples/SFARI/deep_sv/asc_540/bincov/matrices/ASC540.all.binCov.raw.bed.gz
 medianfile: /data/talkowski/Samples/SFARI/deep_sv/asc_540/bincov/matrices/ASC540.all.binCov.median
 famfile: /data/talkowski/Samples/SFARI/lists/SFARI_Real.fam

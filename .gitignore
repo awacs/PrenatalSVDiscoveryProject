@@ -8,6 +8,8 @@ logs/*
 *.bed.gz
 *.tbi
 du_logs/*
+*.vcf
+*.vcf.gz
 
 # Or symlinks to data
 data
@@ -38,3 +40,4 @@ test*
 algorithm_integration/depth/*
 algorithm_integration/pesr/*
 
+QC/

@@ -1,18 +1,25 @@
+# Data subdirectory
+workdir: combined_prob
+rootdir: .
+
 # Key
 batches: ../ref/batch.key
 
-# Input directory
-input_vcfs: ../algorithm_integration/vcfcluster/
-input_beds: ../preprocessing/std_beds/
-
 # Subsets to analyze
-groups: ../ref/quads.519.list
-chroms: ../ref/chroms.autosomes.list
+# chroms: chroms.10.list
+chroms: ref/chroms.autosomes.list
 pesr_sources:
     - delly
     - lumpy
     - manta
     - wham
+
+# Input from prior modules
+input_vcfs: ../01_algorithm_integration/vcfcluster/
+cnv_p: /data/talkowski/Samples/SFARI/DeepSeq/HarrisonCompare/GT_Filtering/clean_pipeline/combined_prob/combined_CNV.passing.p
+bca_p: /data/talkowski/Samples/SFARI/DeepSeq/HarrisonCompare/GT_Filtering/clean_pipeline/combined_prob/combined_BCA.passing.p
+# cnv_p: combined_CNV.passing.p
+# bca_p: combined_BCA.passing.p
 
 # PE/SR clustering parameters
 vcfcluster:
@@ -28,16 +35,3 @@ vcfcluster:
         blacklist: ../ref/b37.lumpy.exclude.4-13.bed.gz
         svsize: 0
         svtypes: DEL,DUP,INV,BND
-
-# PE/SR clustering parameters
-pesr_depth_vcfcluster:
-    dist: 300
-    frac: 0.8
-    blacklist: ../ref/b37.lumpy.exclude.4-13.bed.gz
-    svsize: 0
-    svtypes: DEL,DUP,INV,BND
-
-# Depth clustering parameters
-bedcluster:
-    frac: 0.8
-    flags: "--merge-coordinates"

@@ -11,9 +11,11 @@ rule standardize_vcf:
         'data/raw_vcfs/{source}/{source}.{group}.vcf.gz'
     output:
         vcf='std_vcfs/{source}.{group}.vcf'
+    params:
+        prefix=lambda wildcards: '{source}_{group}'.format(**wildcards)
     shell:
         """
-        svtools standardize {input} {output} {wildcards.source}
+        svtools standardize --prefix {params.prefix} {input} {output} {wildcards.source}
         """
 
 rule identify_vcf_outliers:

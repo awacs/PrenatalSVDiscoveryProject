@@ -3,3 +3,12 @@ metrics/*
 logs/*
 
 __pycache__
+
+baf_metrics/
+baf_rf/
+metadata/
+rdtest_beds/
+train_metrics/
+filtered_beds/
+
+*.p

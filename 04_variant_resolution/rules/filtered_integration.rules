@@ -7,48 +7,28 @@ Cluster SV after filtering based on PE, SR, RD, and BAF evidence.
 
 import pandas as pd
 
-with open(config['groups']) as glist:
-    GROUPS = [g.strip() for g in glist.readlines()]
-
 PESR_SOURCES = config['pesr_sources']
+with open(config['chroms']) as clist:
+    CHROMS = [c.strip() for c in clist.readlines()]
 
 localrules: all, make_vcf_list
 
 rule filter_vcfs:
     input:
-        vcf='unfiltered_vcfs/{batch}.{source}.{chrom}.vcf',
-        cnv='combined_CNV.passing.p',
-        bca='combined_BCA.passing.p'
+        vcf=os.path.join(config['input_vcfs'], '{batch}.{source}.{chrom}.vcf.gz'),
+        cnv=config['cnv_p'],
+        bca=config['bca_p']
     output:
         vcf='filtered_vcfs/{batch}.{source}.{chrom}.vcf.gz',
         tbi='filtered_vcfs/{batch}.{source}.{chrom}.vcf.gz.tbi'
     shell:
-        # awk '(($2=="Pass" || $2=="NA") && 
-        #       $3=="Pass" && 
-        #       $4=="Pass" &&
-        #       ($5=="Pass" || $5=="NA"))' {input.metrics} \
-        # fgrep -e "Pass" {input.metrics} \
-        # awk '(($3=="Pass" || $4=="Pass") && ($5=="Pass"))' {input.metrics} \
-        #     <(awk '(($3=="Pass" || $4=="Pass") && ($5=="Pass"))' {input.cnv_metrics}) \
-        #     <(fgrep -e "Pass" {input.bca_metrics} | sed -e 's/ /\\t/g') \
-        # cat \
-        #     <(awk '(($3=="Pass" || $4=="Pass") && ($5=="Pass"))' {input.cnv_metrics}) \
-        #     <(fgrep -e "Pass" {input.bca_metrics} | sed -e 's/ /\\t/g') \
-        # # Size filter
-        #   | awk '{{split($8, info, ";");
-        #            split(info[1], svtype, "=");
-        #            split(info[7], svlen, "=");
-        #            if (svtype[2] == "BND" || svtype[2] == "INV" || svlen[2] >= 1000 || $1 ~ "^#") {{
-        #              print $0;
-        #            }};
-        #          }}' \
-            # <(sed -e '1d' {input.passing} | cut -f1) \
-            # <(fgrep -e "Pass" {input.bca_metrics} | sed -e 's/ /\\t/g' | cut -f1) \
+#            <(sed -e '1d' {input.cnv} | cut -f1 | fgrep -w -f - <(zcat {input.vcf})) \
+#            <(sed -e '1d' {input.bca} | cut -f1 | fgrep -w -f - <(zcat {input.vcf}) | fgrep -v -e "<DEL>" -e "<DUP>") \
         """
-        cat <( sed -e '1d' {input.cnv}) <(sed -e '1d' {input.bca}) \
-          | cut -f1 \
-          | fgrep -w -f - {input.vcf} \
-          | cat <(sed -n -e '/^#/p' {input.vcf}) - \
+        cat \
+            <(sed -e '1d' {input.cnv} | cut -f1 | fgrep -w -f - <(zcat {input.vcf})) \
+            <(sed -e '1d' {input.bca} | cut -f1 | fgrep -w -f - <(zcat {input.vcf}) | sed -e 's/SVTYPE=DEL/SVTYPE=BND/' -e 's/SVTYPE=DUP/SVTYPE=BND/') \
+          | cat <(sed -n -e '/^#/p' <(zcat {input.vcf})) - \
           | vcf-sort -c \
           | bgzip -c \
           > {output.vcf};
@@ -59,14 +39,14 @@ def get_batch_vcfs(wildcards):
     """Collect all VCFs for a batch/chrom pairing across sources"""
 
     if wildcards.sources == 'pesr':
-        vcf_path = 'filtered_vcfs/{batch}.{source}.{chrom}.vcf.gz'
+        vcf_path = rules.filter_vcfs.output.vcf
 
         return [vcf_path.format(batch=wildcards.batch, source=source,
                             chrom=wildcards.chrom)
                 for source in PESR_SOURCES]
     elif wildcards.sources == 'pesr_depth':
         return ['vcfcluster/pesr/{batch}.{chrom}.vcf.gz'.format(**wildcards),
-                'filtered_vcfs/{batch}.depth.{chrom}.vcf.gz'.format(**wildcards)]
+                rules.filter_vcfs.output.vcf.format(**wildcards, source='depth')]
 
 # Make list of all algorithm VCFs for each batch/chrom combo
 rule make_vcf_list:
@@ -116,3 +96,16 @@ rule link_cpx:
         """
         svtools resolve -p {params.prefix} {input.vcf} {output.bed} -u {output.unresolved}
         """
+
+rule merge_raw_vcfs:
+    input:
+        vcfs=expand('vcfcluster/pesr_depth/{{batch}}.{chrom}.vcf.gz', chrom=CHROMS)
+    output:
+        vcf='merged_vcfs/{batch}.vcf.gz',
+        tbi='merged_vcfs/{batch}.vcf.gz.tbi'
+    shell:
+        """
+        vcf-concat {input.vcfs} | bgzip -c > {output.vcf};
+        tabix -p vcf {output.vcf}
+        """
+

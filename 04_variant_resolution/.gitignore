@@ -1,11 +1,17 @@
 # Ignore data directories
-filtered_vcfs/*
-rdtest_vcfs/*
+filtered_vcfs/
+rdtest_vcfs/
+vcfcluster/
+vcflists/
+complex_linking/
+logs/
+
+data/
+with_DF/
+no_DF/
+
 ref
 unfiltered_vcfs
-vcfcluster/*
-vcflists/*
-complex_linking/*
 *.bed
 *.table*
-logs/*
+*.p
