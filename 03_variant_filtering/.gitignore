@@ -12,3 +12,4 @@ train_metrics/
 filtered_beds/
 
 *.p
+dn_*/

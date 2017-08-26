@@ -13,40 +13,20 @@ with open(config['chroms']) as clist:
 
 localrules: all, make_vcf_list
 
-rule filter_vcfs:
-    input:
-        vcf=os.path.join(config['input_vcfs'], '{batch}.{source}.{chrom}.vcf.gz'),
-        cnv=config['cnv_p'],
-        bca=config['bca_p']
-    output:
-        vcf='filtered_vcfs/{batch}.{source}.{chrom}.vcf.gz',
-        tbi='filtered_vcfs/{batch}.{source}.{chrom}.vcf.gz.tbi'
-    shell:
-#            <(sed -e '1d' {input.cnv} | cut -f1 | fgrep -w -f - <(zcat {input.vcf})) \
-#            <(sed -e '1d' {input.bca} | cut -f1 | fgrep -w -f - <(zcat {input.vcf}) | fgrep -v -e "<DEL>" -e "<DUP>") \
-        """
-        cat \
-            <(sed -e '1d' {input.cnv} | cut -f1 | fgrep -w -f - <(zcat {input.vcf})) \
-            <(sed -e '1d' {input.bca} | cut -f1 | fgrep -w -f - <(zcat {input.vcf}) | sed -e 's/SVTYPE=DEL/SVTYPE=BND/' -e 's/SVTYPE=DUP/SVTYPE=BND/') \
-          | cat <(sed -n -e '/^#/p' <(zcat {input.vcf})) - \
-          | vcf-sort -c \
-          | bgzip -c \
-          > {output.vcf};
-        tabix -f -p vcf {output.vcf}
-        """
-
 def get_batch_vcfs(wildcards):
     """Collect all VCFs for a batch/chrom pairing across sources"""
 
-    if wildcards.sources == 'pesr':
-        vcf_path = rules.filter_vcfs.output.vcf
+    vcf_path = os.path.join(config['filtered_vcfs'], 
+                            '{batch}.{source}.{chrom}.vcf.gz')
 
+    if wildcards.sources == 'pesr':
         return [vcf_path.format(batch=wildcards.batch, source=source,
                             chrom=wildcards.chrom)
                 for source in PESR_SOURCES]
+
     elif wildcards.sources == 'pesr_depth':
         return ['vcfcluster/pesr/{batch}.{chrom}.vcf.gz'.format(**wildcards),
-                rules.filter_vcfs.output.vcf.format(**wildcards, source='depth')]
+                vcf_path.format(**wildcards, source='depth')]
 
 # Make list of all algorithm VCFs for each batch/chrom combo
 rule make_vcf_list:
@@ -101,8 +81,8 @@ rule merge_raw_vcfs:
     input:
         vcfs=expand('vcfcluster/pesr_depth/{{batch}}.{chrom}.vcf.gz', chrom=CHROMS)
     output:
-        vcf='merged_vcfs/{batch}.vcf.gz',
-        tbi='merged_vcfs/{batch}.vcf.gz.tbi'
+        vcf='merged_vcfs/{batch}.alg_merged.vcf.gz',
+        tbi='merged_vcfs/{batch}.alg_merged.vcf.gz.tbi'
     shell:
         """
         vcf-concat {input.vcfs} | bgzip -c > {output.vcf};

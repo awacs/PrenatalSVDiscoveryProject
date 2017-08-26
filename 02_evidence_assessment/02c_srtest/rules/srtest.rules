@@ -45,6 +45,8 @@ rule merge_allosomes:
     run:
         males = pd.read_table(input.males)
         females = pd.read_table(input.females)
+        if males.shape[0] != females.shape[0]:
+            raise Exception('mismatched table sizes')
         if wildcards.chrom == 'Y':
             males.to_csv(output.metrics, sep='\t', index=False)
         else:

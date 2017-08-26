@@ -8,13 +8,13 @@ sr_counts: '../../../pesr_testing/split_counts/cohort.txt.gz'
 
 # Subsets to analyze
 groups: ../../ref/quads.519.list
-chroms: ../../ref/chroms.allosomes.list
+chroms: ../../ref/chroms.all.list
 pesr_sources:
-    # - delly
-    # - lumpy
-    # - manta
+    - delly
+    - lumpy
+    - manta
     - wham
-    # - melt
+    - melt
 
 # RdTest parameters
 rdtest: scripts/RdTest.R

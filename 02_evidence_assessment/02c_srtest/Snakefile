@@ -7,7 +7,6 @@ import pandas as pd
 
 BATCH_KEY = pd.read_table(config['batches'], dtype=str)
 BATCHES = sorted(BATCH_KEY.batch.unique())
-BATCHES = ['Pilot']
 
 PESR_SOURCES = config['pesr_sources']
 SOURCES = PESR_SOURCES + ['depth']

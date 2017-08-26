@@ -7,3 +7,7 @@ vcfcluster:
     queue: normal
 link_cpx:
     queue: normal
+rd_dn_check:
+    queue: normal
+pesr_dn_check:
+    queue: normal

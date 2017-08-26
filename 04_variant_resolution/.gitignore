@@ -15,3 +15,6 @@ unfiltered_vcfs
 *.bed
 *.table*
 *.p
+
+combined_prob/
+denovo/

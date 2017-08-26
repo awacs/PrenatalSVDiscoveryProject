@@ -20,13 +20,15 @@ if config.get('workdir') is not None:
     
     workdir: config['workdir']
 
-include: 'rules/filtered_integration.rules'
+include: 'rules/algorithm_integration.rules'
+include: 'rules/dn-check.rules'
 
 import pandas as pd
 
 BATCH_KEY = pd.read_table(config['batches'], dtype=str)
 BATCHES = sorted(BATCH_KEY.batch.unique())
-BATCHES = ['Phase1']
+# BATCHES = ['Phase1']
+# BATCHES = ['Pilot']
 
 with open(config['chroms']) as clist:
     CHROMS = [c.strip() for c in clist.readlines()]
@@ -40,6 +42,8 @@ wildcard_constraints:
 
 rule all:
     input:
-        expand('merged_vcfs/{batch}.vcf.gz', batch=BATCHES),
-        expand('complex_linking/{batch}.{chrom}.resolved.vcf',
+        expand('merged_vcfs/{batch}.alg_merged.vcf.gz', batch=BATCHES),
+        expand('denovo/filtered_vcfs/{batch}.{chrom}.vcf.gz',
                batch=BATCHES, chrom=CHROMS)
+#         expand('complex_linking/{batch}.{chrom}.resolved.vcf',
+#                batch=BATCHES, chrom=CHROMS)
