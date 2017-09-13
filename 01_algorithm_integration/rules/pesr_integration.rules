@@ -13,7 +13,7 @@ with open(config['groups']) as glist:
 PESR_SOURCES = config['pesr_sources']
 MEI_SOURCES = config['mei_sources']
 
-BATCH_KEY = pd.read_table(config['batches'], dtype=str)
+BATCH_KEY = pd.read_table(config['batch_key'], dtype=str)
 BATCHES = sorted(BATCH_KEY.batch.unique())
 
 # Samples are processed in subgroups of each batch

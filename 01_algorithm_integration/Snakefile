@@ -6,8 +6,9 @@ include: 'rules/depth_integration.rules'
 
 import pandas as pd
 
-BATCH_KEY = pd.read_table(config['batches'], dtype=str)
-BATCHES = sorted(BATCH_KEY.batch.unique())
+BATCH_KEY = pd.read_table(config['batch_key'], dtype=str)
+with open(config['batches']) as batchlist:
+    BATCHES = [b.strip() for b in batchlist.readlines()]
 
 PESR_SOURCES = config['pesr_sources']
 SOURCES = PESR_SOURCES + ['depth']
