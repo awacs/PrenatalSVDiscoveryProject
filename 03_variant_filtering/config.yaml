@@ -20,11 +20,14 @@ bca_p:
     Pilot: /data/talkowski/Samples/SFARI/DeepSeq/HarrisonCompare/GT_Filtering/pilot_RF/combined_prob/combined_BCA.passing.p
 melt_p:
     Phase1: /data/talkowski/Samples/SFARI/DeepSeq/HarrisonCompare/Melt/rebuild_pipeline/melt.pass.phase1
+    Pilot: /data/talkowski/Samples/SFARI/DeepSeq/HarrisonCompare/Melt/pilot/melt.pass.pilot
+melt_beds:
+    Phase1: /PHShome/hb875/SFARI/DeepSeq/HarrisonCompare/Melt/rebuild_pipeline/melt.pass.bed
+    Pilot: /PHShome/hb875/SFARI/DeepSeq/HarrisonCompare/Melt/pilot/melt.pass.bed 
 
 # Subsets to analyze
 groups: ../ref/quads.519.list
-#chroms: ../ref/chroms.all.list
-chroms: ../ref/chroms.autosomes.list
+chroms: ../ref/chroms.all.list
 pesr_sources:
     - delly
     - lumpy

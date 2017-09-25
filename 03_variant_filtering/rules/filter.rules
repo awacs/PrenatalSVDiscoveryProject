@@ -12,7 +12,7 @@ rule filter_vcfs:
         vcf='filtered_vcfs/{batch}.{source}.{chrom}.vcf.gz',
         tbi='filtered_vcfs/{batch}.{source}.{chrom}.vcf.gz.tbi'
     wildcard_constraints:
-        source='(' + '|'.join(PESR_SOURCES) + ')'
+        source='(' + '|'.join(PESR_SOURCES + ['depth']) + ')'
     shell:
         """
         cat \
@@ -28,7 +28,7 @@ rule filter_vcfs:
 rule filter_meis:
     input:
         vcf=os.path.join(config['input_vcfs'], '{batch}.{source}.{chrom}.vcf.gz'),
-        melt=lambda wildcards: config['melt_p'][wildcards.batch],
+        melt=lambda wildcards: config['melt_beds'][wildcards.batch],
     output:
         vcf='filtered_vcfs/{batch}.{source}.{chrom}.vcf.gz',
         tbi='filtered_vcfs/{batch}.{source}.{chrom}.vcf.gz.tbi'
@@ -36,7 +36,7 @@ rule filter_meis:
         source='(' + '|'.join(MEI_SOURCES) + ')'
     shell:
         """
-        cut -f1 {input.melt} \
+        cut -f4 {input.melt} \
           | fgrep -w -f - <(zcat {input.vcf} | sed -e '/^#/d') \
           | cat <(sed -n -e '/^#/p' <(zcat {input.vcf})) - \
           | vcf-sort -c \
