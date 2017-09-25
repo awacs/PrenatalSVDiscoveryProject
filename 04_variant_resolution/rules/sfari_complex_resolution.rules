@@ -1,0 +1,31 @@
+
+import pandas as pd
+import pysam
+
+with open(config['chroms']) as clist:
+    CHROMS = [c.strip() for c in clist.readlines()]
+
+rule resolve_cpx:
+    input:
+        vcf='batch_integration/sfari_filtered/SSC.{chrom}.vcf.gz',
+    output:
+        resolved='complex_resolution/resolved/SSC.{chrom}.vcf.gz',
+        unresolved='complex_resolution/unresolved/SSC.{chrom}.vcf.gz',
+    params:
+        prefix=lambda wildcards: 'SSC_CPX_{chrom}'.format(**wildcards)
+    shell:
+        """
+        svtools resolve -p {params.prefix} -u {output.unresolved} \
+            {input.vcf} {output.resolved} 
+        """
+
+rule overlap_melt:
+    input:
+        resolved='complex_resolution/resolved/SSC.{chrom}.vcf.gz',
+        melt="melt/batch_merged/SSC.{chrom}.vcf.gz"
+    output:
+        vcf='complex_resolution/resolved_with_melt/SSC.{chrom}.vcf.gz',
+    shell:
+        """
+        """
+

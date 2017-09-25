@@ -10,128 +10,173 @@
 
 
 import argparse
-from collections import namedtuple, deque
+import itertools
 import numpy as np
 import pysam
 import svtools.utils as svu
-from svtools.cli.sr_test import SRBreakpoint
-from svtools.cli.pe_test import PEBreakpoint
+import pandas as pd
+from svtools.pesr import PESRTestRunner, SRTest, PETest
 
 
-def check_record(record, fam_map, config, max_vaf=0.01):
-    # get total number of parents for VF filtering
-    n_parents = np.unique(fam_map[:, 1:]).shape[0]
-    max_parents = max_vaf * n_parents
-
-    # Convert genotypes to 0/1/2
-    genotypes = [sum(filter(None, s['GT'])) for s in record.samples.values()]
-    genotypes = np.array(genotypes, dtype=np.int64)
-
-    # Pivot genotypes into (child, mother, father) tuples
-    gt = np.take(genotypes, fam_map)
-
-    # Restrict to rare variants
-    called_parent = (gt[:, 1:] != 0)
-    # parents appear once for each child
-    n_called_parents = np.sum(called_parent.flatten()) / 2
-    if n_called_parents >= max_parents:
-        return
-
-    # Restrict to variants called in children, then filter to calls with
-    # no call in parent
-    called = (gt[:, 0] != 0)
-    no_parents = (gt[:, 1:].sum(axis=1) == 0)
-    denovo = fam_map[np.where(called & no_parents)]
-
-    if denovo.shape[0] != 0:
-        samples = np.array(record.samples.keys(), dtype=str)
-        # parents = np.unique(np.take(samples, denovo[:, 1:]))
-        parents = np.unique(np.take(samples, denovo))
-        dn_test(record, list(parents), config)
-
-
-def dn_test(record, parents, config):
+def get_denovo_candidates(record, max_parents=20):
+    """
+    Obtain list of samples which are putatively called de novo
+    """
     called = svu.get_called_samples(record)
+    parents = [s for s in called if s.endswith('fa') or s.endswith('mo')]
 
-    for i, parent in enumerate(parents):
-        others = parents[:i] + parents[i+1:]
-        blacklist = called + others
-        samples = record.samples.keys()
-        whitelist = [s for s in samples if s not in blacklist]
+    if len(parents) > max_parents:
+        return []
 
-        # PE Test
-        pe = PEBreakpoint.from_vcf(record)
-        pe.samples = [parent]
+    denovo = []
+    for quad, samples in itertools.groupby(called, lambda s: s.split('.')[0]):
+        # Add putative de novo calls
+        samples = list(samples)
+        members = [s.split('.')[1] for s in samples]
+        if 'fa' not in members and 'mo' not in members:
+            denovo += samples
 
-        pe.pe_test(whitelist, config.discfile,
-                   n_background=160, window_in=50, window_out=500)
-        stats = pe.stats
-        stats['name'] = pe.name
-        stats['sample'] = parent
-        cols = 'name sample log_pval called_median bg_median'.split()
-        stats[cols].to_csv(config.petest, sep='\t', index=False, header=False,
-                           na_rep='NA')
-
-        # SR Test
-        sr = SRBreakpoint.from_vcf(record)
-        sr.samples = [parent]
-
-        sr.sr_test(whitelist, config.countfile,
-                   n_background=160, window=50)
-
-        pvals = sr.best_pvals
-        pvals['sample'] = parent
-        cols = 'name sample coord pos log_pval called_median bg_median'.split()
-        pvals = pvals[cols].fillna(0)
-
-        int_cols = ['pos']  # called_median bg_median'.split()
-        for col in int_cols:
-            pvals[col] = pvals[col].round().astype(int)
-        pvals.log_pval = np.abs(pvals.log_pval)
-
-        pvals.to_csv(config.srtest, sep='\t', index=False, header=False,
-                     na_rep='NA')
+    return denovo
 
 
-class DnTestConfig:
-    def __init__(self, petest, srtest, discfile, countfile):
-        self.petest = petest
-        self.srtest = srtest
-        self.discfile = discfile
-        self.countfile = countfile
+class DenovoTestRunner(PESRTestRunner):
+    def __init__(self, vcf, countfile, discfile, pe_fout, sr_fout,
+                 n_background=160, max_parental_vf=0.01):
 
+        super().__init__(vcf, n_background)
 
-def parse_fam(famfile, vcf):
-    """
-    Create mapping of children to parent indices in VCF header
+        self.srtest = SRTest(countfile)
+        self.sr_fout = sr_fout
 
-    Returns
-    -------
-    fam_map : np.array([int, int, int])
-        Indices of sample, mother, father in VCF header
-    """
+        self.petest = PETest(discfile)
+        self.pe_fout = pe_fout
 
-    samples = list(vcf.header.samples)
-    idx_map = deque()
+        self.max_parental_vf = max_parental_vf
+        parents = [s for s in self.samples
+                   if s.endswith('fa') or s.endswith('mo')]
+        self.max_n_parents = max_parental_vf * len(parents)
 
-    names = 'fam sample father mother sex phenotype'.split()
-    Sample = namedtuple('Sample', names)
+    def run(self):
+        for record in self.vcf:
+            # Skip records without any Mendelian violations
+            candidates = get_denovo_candidates(record, self.max_n_parents)
+            if len(candidates) == 0:
+                continue
 
-    for line in famfile:
-        data = line.strip().split()
-        sample = Sample(*data)
+            # Restrict to rare (parental VF<0.1%) variants
+            c = svu.get_called_samples(record)
+            parents = [s for s in c if s.endswith('fa') or s.endswith('mo')]
+            if len(parents) > self.max_n_parents:
+                continue
 
-        if sample.sample not in samples:
-            continue
-        # Require both parents to determine de novo status
-        if sample.father != '0' and sample.mother != '0':
-            indices = np.zeros(3)
-            indices[0] = samples.index(sample.sample)
-            indices[1] = samples.index(sample.mother)
-            indices[2] = samples.index(sample.father)
-            idx_map.append(indices)
+            # Skip non-stranded (wham)
+            if record.info['STRANDS'] not in '+- -+ ++ --'.split():
+                continue
 
-    return np.array(idx_map, dtype=np.int64)
+            self.test_record(record)
+
+    def test_record(self, record):
+        candidates = get_denovo_candidates(record, self.max_n_parents)
+
+        for child in candidates:
+            called = [child]
+            background = self.choose_background(record, candidates)
+
+            self.sr_test(record, called, background)
+            self.pe_test(record, called, background)
+
+    def sr_test(self, record, called, background):
+        sr_results = self.srtest.test_record(record, called, background)
+
+        child = called[0]
+        sr_results['sample'] = child
+
+        # Check parents at predicted coordinates in child
+        posA, posB = sr_results.set_index('coord')['pos'][['posA', 'posB']]
+        parents = self.sr_test_parents(record, child, background,
+                                       posA, posB)
+
+        # Merge parents and children
+        results = pd.concat([sr_results, parents], ignore_index=True)
+
+        # sneak posB-posA distance into output
+        dist = posB - posA
+        results.loc[results.coord == 'sum', 'pos'] = dist
+
+        cols = 'name sample coord pos log_pval called background'.split()
+        results = results[cols]
+        results['pos'] = results.pos.astype(int)
+        results = results.rename(columns={'called': 'called_median',
+                                          'background': 'bg_median'})
+
+        results.to_csv(self.sr_fout, index=False, header=False,
+                       sep='\t', na_rep='NA', float_format='%.20f')
+
+    def pe_test(self, record, called, background):
+        pe_results = self.petest.test_record(record, called, background)
+
+        child = called[0]
+        pe_results['sample'] = child
+
+        quad = child.split('.')[0]
+        p_results = []
+        for member in 'fa mo'.split():
+            parent = quad + '.' + member
+            result = self.petest.test_record(record, [parent], background)
+            result['sample'] = parent
+            p_results.append(result)
+
+        p_results = pd.concat(p_results)
+        results = pd.concat([pe_results, p_results], ignore_index=True)
+
+        cols = 'name sample log_pval called background'.split()
+        results[cols].to_csv(self.pe_fout, index=False, header=False,
+                             sep='\t', na_rep='NA', float_format='%.20f')
+
+    def choose_background(self, record, candidates):
+        # Exclude called samples and all candidate families from background
+        quads = sorted(set([s.split('.')[0] for s in candidates]))
+        members = 'fa mo p1 s1'.split()
+        related = ['.'.join(s) for s in itertools.product(quads, members)]
+
+        called = set(svu.get_called_samples(record))
+        blacklist = called.union(related)
+
+        background = [s for s in self.samples if s not in blacklist]
+
+        if len(background) >= self.n_background:
+            background = np.random.choice(background, self.n_background,
+                                          replace=False).tolist()
+
+        return background
+
+    def sr_test_parents(self, record, child, background, posA, posB):
+        quad = child.split('.')[0]
+        results = []
+        for member in 'fa mo'.split():
+            parent = quad + '.' + member
+
+            p_results = []
+            for pos, strand in zip([posA, posB], record.info['STRANDS']):
+                result = self.srtest.test(record.chrom, pos, strand,
+                                          [parent], background)
+                result = result.to_frame().transpose()
+                result['coord'] = 'posA' if pos == posA else 'posB'
+                result['pos'] = pos
+
+                p_results.append(result)
+
+            p_results = pd.concat(p_results, ignore_index=True)
+            p_total = self.srtest._test_total(p_results)
+
+            p_results = pd.concat([p_results, p_total], ignore_index=True)
+            p_results['sample'] = parent
+            results.append(p_results)
+
+        results = pd.concat(results, ignore_index=True)
+        results['name'] = record.id
+
+        return results
 
 
 def main():
@@ -139,20 +184,17 @@ def main():
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('vcf')
-    parser.add_argument('fam', type=argparse.FileType('r'))
-    parser.add_argument('countfile')
-    parser.add_argument('discfile')
+    parser.add_argument('-c', '--countfile', required=True)
+    parser.add_argument('-d', '--discfile', required=True)
+    parser.add_argument('--background', type=int, default=160)
+    parser.add_argument('--max-parental-vf', type=float, default=0.01)
     parser.add_argument('petest', type=argparse.FileType('w'), help='fout')
     parser.add_argument('srtest', type=argparse.FileType('w'), help='fout')
     args = parser.parse_args()
 
+    vcf = pysam.VariantFile(args.vcf)
     countfile = pysam.TabixFile(args.countfile)
     discfile = pysam.TabixFile(args.discfile)
-
-    config = DnTestConfig(args.petest, args.srtest, discfile, countfile)
-
-    vcf = pysam.VariantFile(args.vcf)
-    fam_map = parse_fam(args.fam, vcf)
 
     header = 'name sample log_pval called_median bg_median'.split()
     args.petest.write('\t'.join(header) + '\n')
@@ -160,8 +202,10 @@ def main():
     header = 'name sample coord pos log_pval called_median bg_median'.split()
     args.srtest.write('\t'.join(header) + '\n')
 
-    for record in vcf:
-        check_record(record, fam_map, config)
+    runner = DenovoTestRunner(vcf, countfile, discfile,
+                              args.petest, args.srtest,
+                              args.background, args.max_parental_vf)
+    runner.run()
 
 
 if __name__ == '__main__':

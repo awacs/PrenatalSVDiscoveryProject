@@ -5,12 +5,12 @@
 # Distributed under terms of the MIT license.
 
 """
-
+Clean records in VCF based on de novo filter results
 """
 
 import argparse
 import sys
-import pandas as pd
+from collections import defaultdict
 import pysam
 import svtools.utils as svu
 
@@ -46,36 +46,51 @@ def set_null(record, sample):
             record.samples[sample][fmt] = tuple(null_val for i in range(n))
 
 
-def filter_dn_variants(vcf, metrics, fout):
-    CNV = 'DEL DUP'.split()
-    is_cnv = metrics.svtype.isin(CNV)
-    depth_only = metrics.sources == 'depth'
-    pesr_size_filter = (metrics.svsize >= 1000)
+def parse_filtered(filterfile):
+    """Get dictionaries of added/removed samples from de novo filter"""
 
-    passing = ((depth_only & is_cnv & metrics.rd_pass) |
-               (~depth_only & is_cnv & pesr_size_filter & metrics.rd_pass) |
-               (~depth_only & is_cnv & ~pesr_size_filter & metrics.pesr_pass) |
-               (~is_cnv & metrics.pesr_pass))
+    add = defaultdict(list)
+    remove = defaultdict(list)
 
-    def _join_samples(s):
-        return sorted(set(s))
+    for line in filterfile:
+        name, quad, called = line.strip().split()
+        called = called.split(',')
 
-    passes = metrics.loc[passing].groupby('name')['sample'].agg(_join_samples)
-    fails = metrics.loc[~passing].groupby('name')['sample'].agg(_join_samples)
+        samples = [quad + '.' + m for m in 'fa mo p1 s1'.split()]
 
-    checked_variants = metrics.name.unique()
+        for sample in samples:
+            if sample in called:
+                add[name].append(sample)
+            else:
+                remove[name].append(sample)
+
+    return add, remove
+
+
+def filter_dn_variants(vcf, filterfile, fout):
+    """
+    Add parent false negatives and remove child false positives from dn filter
+    Arguments
+    ---------
+    vcf : pysam.VariantFile
+    filterfile : file
+    fout : pysam.VariantFile
+    """
+
+    # Get dictionaries of samples to add and remove from each variant
+    add, remove = parse_filtered(filterfile)
+
     for record in vcf:
         # Write records unaltered if they weren't included in the de novo check
-        if record.id not in checked_variants:
+        if record.id not in add.keys() and record.id not in remove.keys():
             fout.write(record)
+
         # Otherwise set samples appropriately
         else:
-            pass_samples = passes.get(record.id, [])
-            for sample in pass_samples:
+            for sample in add.get(record.id, []):
                 record.samples[sample]['GT'] = (0, 1)
 
-            fail_samples = fails.get(record.id, [])
-            for sample in fail_samples:
+            for sample in remove.get(record.id, []):
                 set_null(record, sample)
 
             # Only report record if any samples made it through de novo check
@@ -88,7 +103,8 @@ def main():
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('vcf')
-    parser.add_argument('metrics', help='Classified metrics')
+    parser.add_argument('filtered', type=argparse.FileType('r'),
+                        help='De novo filter results')
     parser.add_argument('fout', help='Filtered VCF')
     args = parser.parse_args()
 
@@ -97,9 +113,7 @@ def main():
     fout = sys.stdout if args.fout in 'stdout -'.split() else args.fout
     fout = pysam.VariantFile(fout, 'w', header=vcf.header)
 
-    metrics = pd.read_table(args.metrics)
-
-    filter_dn_variants(vcf, metrics, fout)
+    filter_dn_variants(vcf, args.filtered, fout)
 
 
 if __name__ == '__main__':

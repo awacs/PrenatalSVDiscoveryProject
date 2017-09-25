@@ -49,6 +49,10 @@ def process_rdtest(rdtest):
 
 
 def process_srtest(srtest):
+    # posB-posA dist is in the sum pos column
+    dists = srtest.loc[srtest.coord == 'sum', 'name sample pos'.split()].copy()
+    dists = dists.rename(columns=dict(pos='dist'))
+
     metrics = 'log_pval called_median bg_median'.split()
 
     # remove -0.0 (temporary, should fix in SR-test)
@@ -62,6 +66,8 @@ def process_srtest(srtest):
     srtest.columns = ['_'.join(col[::-1]).strip()
                       for col in srtest.columns.values]
     srtest = srtest.reset_index()
+
+    srtest = pd.merge(srtest, dists, on='name sample'.split(), how='left')
 
     return srtest
 
@@ -110,7 +116,7 @@ def make_columns():
     PESR_names = ['PESR_' + name for name in PE_names]
     PE_names = ['PE_' + name for name in PE_names]
 
-    SR_names = ('posA_log_pval posB_log_pval sum_log_pval '
+    SR_names = ('posA_log_pval posB_log_pval sum_log_pval dist '
                 'posA_called_median posB_called_median sum_called_median '
                 'posA_bg_median posB_bg_median sum_bg_median').split()
     SR_names = ['SR_' + name for name in SR_names]

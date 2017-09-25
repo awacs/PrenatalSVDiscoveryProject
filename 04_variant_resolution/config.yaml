@@ -1,5 +1,5 @@
 # Data subdirectory
-workdir: ssc_20170825_v2
+workdir: ssc_20170911
 rootdir: .
 scripts: scripts
 
@@ -18,15 +18,23 @@ pesr_sources:
     - manta
     - wham
 
+cohort_name: 'SSC'
 # Input from prior modules
-# input_vcfs: ../01_algorithm_integration/vcfcluster/
+raw_vcfs: ../01_algorithm_integration/vcfcluster/
 filtered_vcfs: ../03_variant_filtering/filtered_vcfs/
+fail_vcfs: ../03_variant_filtering/fails/
 
 # PE/SR clustering parameters
 vcfcluster:
     pesr:
         dist: 300
         frac: 0.1
+        blacklist: ../ref/b37.lumpy.exclude.4-13.bed.gz
+        svsize: 0
+        svtypes: DEL,DUP,INV,BND
+    depth:
+        dist: 2000000
+        frac: 0.8
         blacklist: ../ref/b37.lumpy.exclude.4-13.bed.gz
         svsize: 0
         svtypes: DEL,DUP,INV,BND
@@ -47,3 +55,7 @@ sr_counts: '../../pesr_testing/split_counts/cohort.txt.gz'
 cutoffs:
     Phase1: /data/talkowski/Samples/SFARI/deep_sv/asc_540/sv-pipeline/04_variant_resolution/Phase1.cutoffs.txt
     Pilot: /data/talkowski/Samples/SFARI/deep_sv/asc_540/sv-pipeline/04_variant_resolution/Pilot.cutoffs.txt
+
+melt_beds:
+    Pilot: /data/talkowski/Samples/SFARI/DeepSeq/HarrisonCompare/Melt/pilot/melt.pass.bed
+    Phase1: /data/talkowski/Samples/SFARI/DeepSeq/HarrisonCompare/Melt/rebuild_pipeline/melt.pass.bed
