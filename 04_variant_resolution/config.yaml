@@ -64,3 +64,5 @@ melt_dn_filter: data/melt.dn_filter.txt
 cytobands: ref/cytobands.bed.gz
 multiallelic: data/multiallelic_CNV_IDs.list
 final_filter: data/final_filter.bed
+homozygotes: data/homozygous_add.list
+blacklist: ref/rCNVmap_excluded_loci.CNVs.bed
