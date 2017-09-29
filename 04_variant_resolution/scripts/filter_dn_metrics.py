@@ -100,8 +100,11 @@ class DenovoFilter:
             dist_pass = (self.child.SR_dist / self.child.svsize) >= 0.8
             SR_pass = SR_pass and dist_pass
 
-            # Apply more stringent de novo filters for PE-supported variants
-            PE_pass = self.RD_support
+            # Apply more stringent de novo filters for PE-supported CNV
+            if self.child.svtype in 'DEL DUP'.split():
+                PE_pass = self.RD_support
+            else:
+                PE_pass = True
 
             # Add appropriate filters
             if self.PE_support and not self.SR_support:
@@ -152,12 +155,12 @@ class DenovoFilter:
 
             cutoffs = self.get_cutoffs(('pesr', 'CNV'))
             filter_pass = (filter_pass or
-                           self.test_sample(parent, cutoffs, np.all))
+                           parent.RD_log_pval >= cutoffs['RD_log_pval'])
 
         elif self.cutoff_class == ('pesr', 'CNV'):
             # First try checking against RD cutoffs
             cutoffs = self.get_cutoffs(('pesr', 'CNV'))
-            filter_pass = self.test_sample(parent, cutoffs, np.all)
+            filter_pass = parent.RD_log_pval >= cutoffs['RD_log_pval']
 
             # If >5 kb and child passed pe/sr, also check PE/SR pvals
             if parent.svsize >= 5000 and self.PESR_pass:
@@ -174,7 +177,7 @@ class DenovoFilter:
         # depth CNV only require pe/sr CNV >1kb cutoffs
         else:
             cutoffs = self.get_cutoffs(('pesr', 'CNV'))
-            filter_pass = self.test_sample(parent, cutoffs, np.all)
+            filter_pass = parent.RD_log_pval >= cutoffs['RD_log_pval']
 
         return filter_pass
 

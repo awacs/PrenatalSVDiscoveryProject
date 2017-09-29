@@ -39,6 +39,8 @@ ROBERTSONIANS = set([
     '14005.s1',
 ])
 
+DEPTH_EXCLUDED = OUTLIERS.union(ROBERTSONIANS)
+
 
 def sfari_filters(vcf):
     for record in vcf:
@@ -54,20 +56,17 @@ def sfari_filters(vcf):
 
         # Remove depth-only events in Robertsonian translocation cases
         if record.info['SOURCES'] == ('depth',):
-            if called.issubset(ROBERTSONIANS):
+            if called.issubset(DEPTH_EXCLUDED):
                 continue
-            else:
-                for sample in called.intersection(ROBERTSONIANS):
-                    svu.set_null(record, sample)
 
         # Check variant wasn't only in aneuploidies and Robertsonians
-        called = set(svu.get_called_samples(record))
-        if len(called) == 0:
-            continue
+        #  called = set(svu.get_called_samples(record))
+        #  if len(called) == 0:
+            #  continue
 
         # Remove variants specific to dosage outliers
-        if called.issubset(OUTLIERS):
-            continue
+        #  if called.issubset(OUTLIERS):
+            #  continue
 
         yield record
 

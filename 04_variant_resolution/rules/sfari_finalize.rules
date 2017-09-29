@@ -1,0 +1,42 @@
+
+rule finalize_variants:
+    input:
+        'complex_resolution/resolved_and_merged/SSC.{chrom}.vcf.gz'
+    output:
+        'final_variants/SSC.{chrom}.vcf.gz'
+    shell:
+        """
+        {config[scripts]}/final_filter.py {input} {config[final_filter]} - \
+          | vcf-sort -c \
+          | {config[scripts]}/rename.py - - \
+          | bgzip -c \
+          > {output};
+        tabix -p vcf {output}
+        """
+
+rule scrape_stats:
+    input:
+        vcf='final_variants/SSC.{chrom}.vcf.gz',
+    output:
+        var='callset_stats/variant_stats/SSC.{chrom}.txt',
+        obs='callset_stats/sample_stats/SSC.{chrom}.txt',
+    shell:
+        """
+        {config[scripts]}/scrape_stats.py {input.vcf} \
+            {config[samples][Phase1]} {config[samples][Pilot]} \
+            {output.var} {output.obs}
+        """
+
+rule merge_stats:
+    input:
+        expand('callset_stats/{{stat}}/SSC.{chrom}.txt',
+               chrom=CHROMS)
+    output:
+        'callset_stats/SSC.v3.{stat}.csv'
+    run:
+        dfs = []
+        for df in input:
+            dfs.append(pd.read_table(df))
+        df = pd.concat(dfs)
+        df.to_csv(output[0], index=False, na_rep='NA')
+

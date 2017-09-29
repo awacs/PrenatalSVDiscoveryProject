@@ -41,7 +41,7 @@ def get_denovo_candidates(record, max_parents=20):
 
 class DenovoTestRunner(PESRTestRunner):
     def __init__(self, vcf, countfile, discfile, pe_fout, sr_fout,
-                 n_background=160, max_parental_vf=0.01):
+                 n_background=160, max_parents=10):
 
         super().__init__(vcf, n_background)
 
@@ -51,22 +51,21 @@ class DenovoTestRunner(PESRTestRunner):
         self.petest = PETest(discfile)
         self.pe_fout = pe_fout
 
-        self.max_parental_vf = max_parental_vf
         parents = [s for s in self.samples
                    if s.endswith('fa') or s.endswith('mo')]
-        self.max_n_parents = max_parental_vf * len(parents)
+        self.max_parents = max_parents
 
     def run(self):
         for record in self.vcf:
             # Skip records without any Mendelian violations
-            candidates = get_denovo_candidates(record, self.max_n_parents)
+            candidates = get_denovo_candidates(record, self.max_parents)
             if len(candidates) == 0:
                 continue
 
             # Restrict to rare (parental VF<0.1%) variants
             c = svu.get_called_samples(record)
             parents = [s for s in c if s.endswith('fa') or s.endswith('mo')]
-            if len(parents) > self.max_n_parents:
+            if len(parents) > self.max_parents:
                 continue
 
             # Skip non-stranded (wham)
@@ -76,7 +75,7 @@ class DenovoTestRunner(PESRTestRunner):
             self.test_record(record)
 
     def test_record(self, record):
-        candidates = get_denovo_candidates(record, self.max_n_parents)
+        candidates = get_denovo_candidates(record, self.max_parents)
 
         for child in candidates:
             called = [child]
@@ -187,7 +186,7 @@ def main():
     parser.add_argument('-c', '--countfile', required=True)
     parser.add_argument('-d', '--discfile', required=True)
     parser.add_argument('--background', type=int, default=160)
-    parser.add_argument('--max-parental-vf', type=float, default=0.01)
+    parser.add_argument('--max-parents', type=float, default=10)
     parser.add_argument('petest', type=argparse.FileType('w'), help='fout')
     parser.add_argument('srtest', type=argparse.FileType('w'), help='fout')
     args = parser.parse_args()
@@ -204,7 +203,7 @@ def main():
 
     runner = DenovoTestRunner(vcf, countfile, discfile,
                               args.petest, args.srtest,
-                              args.background, args.max_parental_vf)
+                              args.background, args.max_parents)
     runner.run()
 
 

@@ -78,7 +78,7 @@ rule cnv_size_filter:
 rule merge_pesr_depth:
     input:
         pesr='batch_integration/pesr/size_filtered/SSC.{chrom}.vcf.gz',
-        depth='batch_integration/depth/size_filtered/SSC.{chrom}.vcf.gz',
+        depth='batch_integration/depth/link_merged/SSC.{chrom}.vcf.gz',
     output:
         vcf='batch_integration/pesr_depth/SSC.{chrom}.vcf.gz',
         tbi='batch_integration/pesr_depth/SSC.{chrom}.vcf.gz.tbi',
@@ -114,32 +114,6 @@ rule merge_vcfs:
         vcf-concat {input} | vcf-sort -c | bgzip -c > {output.vcf};
         tabix -p vcf {output.vcf}
         """
-
-rule scrape_stats:
-    input:
-        vcf='batch_integration/sfari_filtered/SSC.{chrom}.vcf.gz',
-    output:
-        var='batch_integration/variant_stats/SSC.{chrom}.variant_stats.txt',
-        obs='batch_integration/variant_stats/SSC.{chrom}.sample_stats.txt'
-    shell:
-        """
-        {config[scripts]}/scrape_stats.py {input.vcf} \
-            {config[samples][Phase1]} {config[samples][Pilot]} \
-            {output.var} {output.obs}
-        """
-
-rule merge_stats:
-    input:
-        expand('batch_integration/variant_stats/SSC.{chrom}.{{stat}}.txt',
-               chrom=CHROMS)
-    output:
-        'callset_stats/SSC.v2.{stat}.csv'
-    run:
-        dfs = []
-        for df in input:
-            dfs.append(pd.read_table(df))
-        df = pd.concat(dfs)
-        df.to_csv(output[0], index=False, na_rep='NA')
 
 rule get_denovo:
     input:

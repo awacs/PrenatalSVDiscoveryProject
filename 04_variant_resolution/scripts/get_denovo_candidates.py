@@ -51,8 +51,9 @@ def filter_denovo_records(vcf, max_parents=10):
             continue
 
         # Skip non-stranded (wham)
-        if record.info['STRANDS'] not in '+- -+ ++ --'.split():
-            continue
+        if 'STRANDS' in record.info.keys():
+            if record.info['STRANDS'] not in '+- -+ ++ --'.split():
+                continue
 
         yield record
 

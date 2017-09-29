@@ -53,7 +53,7 @@ def parse_filtered(filterfile):
     remove = defaultdict(list)
 
     for line in filterfile:
-        name, quad, called = line.strip().split()
+        name, quad, called, support = line.strip().split()
         called = called.split(',')
 
         samples = [quad + '.' + m for m in 'fa mo p1 s1'.split()]

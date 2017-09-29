@@ -21,10 +21,21 @@ rule filter_melt:
           | bgzip -c > {output}
         """
 
+rule melt_dn_filter:
+    input:
+        "melt/filtered_vcfs/{batch}.{chrom}.vcf.gz"
+    output:
+        "melt/dn_filtered_vcfs/{batch}.{chrom}.vcf.gz"
+    shell:
+        """
+        {config[scripts]}/melt_dn_filter.py \
+          {input} {config[melt_dn_filter]} {output}
+        """
+
 rule merge_melt_batches:
     input:
-        phase1="melt/filtered_vcfs/Phase1.{chrom}.vcf.gz",
-        pilot="melt/filtered_vcfs/Pilot.{chrom}.vcf.gz",
+        phase1="melt/dn_filtered_vcfs/Phase1.{chrom}.vcf.gz",
+        pilot="melt/dn_filtered_vcfs/Pilot.{chrom}.vcf.gz",
     output:
         vcflist=temp("melt/batch_merged/SSC.{chrom}.vcflist"),
         vcf="melt/batch_merged/SSC.{chrom}.vcf.gz"

@@ -1,11 +1,11 @@
 
 rule annotate:
     input:
-        vcf='vcfs/variants.{chrom}.vcf.gz',
+        vcf=os.path.join(config['input_vcfs'], 'SSC.{chrom}.vcf.gz'),
         gencode='gencode/gencode.canonical_annotation.gtf.gz',
         noncoding='noncoding/noncoding_elements.bed'
     output:
-        vcf='annotated_vcfs/variants.{chrom}.vcf'
+        vcf='annotated_vcfs/SSC.{chrom}.vcf'
     shell:
         """
         svtools annotate \

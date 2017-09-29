@@ -1,0 +1,16 @@
+svtype	source	metric	cutoff	direction
+DEL	depth	RD_Median_Separation	0.399115696389094	gt
+DEL	depth	RD_log_pval	9.41165934074301	gt
+DEL	depth	svsize	5000	gt
+DUP	depth	RD_Median_Separation	0.39610961585515	gt
+DUP	depth	RD_log_pval	12.7031892142326	gt
+DUP	depth	RD_log_2ndMaxP	0.107691499405593	gt
+DUP	depth	svsize	5000	gt
+CNV	pesr	RD_Median_Separation	0.302736194582378	gt
+CNV	pesr	RD_log_pval	3.47362019115186	gt
+CNV	pesr	RD_log_2ndMaxP	0.00178499500448664	gt
+CNV	pesr	svsize	1000	gt
+SV	pesr	PE_log_pval	3.04006137332276	gt
+SV	pesr	SR_sum_log_pval	2.17147240951626	gt
+SV	pesr	PESR_log_pval	5.21153378283902	gt
+SV	pesr	svsize	0	gt

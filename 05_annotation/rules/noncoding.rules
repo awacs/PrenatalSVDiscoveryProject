@@ -1,5 +1,36 @@
 
+KEY = {}
+with open('noncoding.key') as keyfile:
+    for line in keyfile:
+        bed, name = line.strip().split()
+        KEY[name] = bed
+
+def map_input(wildcards):
+    return os.path.join('formatted', KEY[wildcards.name])
+
+
 # TODO: process and concatenate noncoding element beds provided in config
-rule make_noncoding_bed:
+rule clean_noncoding_bed:
+    input:
+        map_input
     output:
-        touch('noncoding/noncoding_elements.bed')
+        'cleaned/{name}.bed'
+    shell:
+        """
+        cut -f -3 {input} \
+          | sort -k1,1V -k2,2n \
+          | bedtools merge -i stdin \
+          | awk -v OFS="\\t" '{{print $0, "{wildcards.name}"}}' \
+          > {output}
+        """
+
+    
+rule make_noncoding_bed:
+    input:
+        expand('cleaned/{name}.bed', name=KEY.keys())
+    output:
+        'noncoding/noncoding_elements.bed'
+    shell:
+        """
+        sort -k1,1V -k2,2n -m {input} > {output}
+        """

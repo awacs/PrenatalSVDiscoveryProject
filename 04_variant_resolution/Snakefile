@@ -20,20 +20,18 @@ if config.get('workdir') is not None:
     
     workdir: config['workdir']
 
-# include: 'rules/algorithm_integration.rules'
-# include: 'rules/dn-check.rules'
 include: 'rules/sfari_algorithm_integration.rules'
 include: 'rules/sfari_dn-check.rules'
+include: 'rules/depth_merging.rules'
 include: 'rules/sfari_batch_integration.rules'
 include: 'rules/sfari_melt_integration.rules'
 include: 'rules/sfari_complex_resolution.rules'
+include: 'rules/sfari_finalize.rules'
 
 import pandas as pd
 
 BATCH_KEY = pd.read_table(config['batches'], dtype=str)
 BATCHES = sorted(BATCH_KEY.batch.unique())
-# BATCHES = ['Phase1']
-# BATCHES = ['Pilot']
 
 with open(config['chroms']) as clist:
     CHROMS = [c.strip() for c in clist.readlines()]
@@ -50,14 +48,6 @@ wildcard_constraints:
     evidence='(' + '|'.join(EVIDENCE) + ')',
 
 
-# BATCHES = 'Phase1 Pilot'.split()
-# CHROMS = ['22']
-
 rule all:
     input:
-        expand('complex_resolution/resolved/SSC.{chrom}.vcf.gz',
-               chrom=CHROMS),
-        'batch_integration/SSC.vcf.gz',
-        'callset_stats/SSC.v2.variant_stats.csv',
-        'callset_stats/SSC.v2.sample_stats.csv',
-        'batch_integration/SSC.denovo.bed',
+        expand('final_variants/SSC.{chrom}.vcf.gz', chrom=CHROMS)

@@ -1,0 +1,90 @@
+
+configfile: 'config.yaml'
+
+import glob
+import pandas as pd
+
+#TESTS = 'petest srtest'.split()
+TESTS = ['petest']
+CHROMS = [str(x) for x in range(1, 23)] + 'X Y'.split()
+#CHROMS = [str(x) for x in range(1, 23)]
+
+rule all:
+    input:
+        expand('ctx_filtering/filtered_vcfs/SSC.{chrom}.vcf.gz',
+               chrom=CHROMS)
+
+
+rule restore_split_ctx_header:
+    input:
+        vcf='ctx_filtering/bnd_vcfs/SSC.{chrom}.vcf.gz',
+        split='ctx_filtering/splits/SSC.{chrom}.{split}',
+    output:
+        split='ctx_filtering/split_bnd_vcfs/SSC.{chrom}.{split}.vcf.gz',
+    shell:
+        """
+        cat <(zcat {input.vcf} | sed -n -e '/^#/p') {input.split} \
+          | bgzip -c > {output.split};
+        """
+
+rule ctx_petest:
+    input:
+        'ctx_filtering/split_bnd_vcfs/SSC.{chrom}.{split}.vcf.gz'
+    output:
+        'ctx_filtering/petest_splits/SSC.{chrom}.{split}.stats'
+    shell:
+        """
+        svtools pe-test {input} {config[pe_counts]} {output}
+        """
+
+rule ctx_srtest:
+    input:
+        'ctx_filtering/split_bnd_vcfs/SSC.{chrom}.{split}.vcf.gz'
+    output:
+        'ctx_filtering/srtest_splits/SSC.{chrom}.{split}.stats'
+    shell:
+        """
+        svtools sr-test {input} {config[sr_counts]} {output}
+        """
+
+def get_splits(wildcards):
+    split_path = 'ctx_filtering/splits/SSC.{chrom}.*'
+    split_path = split_path.format(**wildcards)
+    splits = glob.glob(split_path)
+    splits = [f.split('.')[-1] for f in splits]
+
+    path = 'ctx_filtering/{test}_splits/SSC.{chrom}.{split}.stats'
+    test_splits = [path.format(split=split, **wildcards) for split in splits]
+    
+    return test_splits
+
+rule aggregate_splits:
+    input:
+        statfiles=get_splits
+    output:
+        'ctx_filtering/{test}/SSC.{chrom}.stats',
+    wildcard_constraints:
+        test='(petest|srtest)'
+    run:
+        dfs = []
+        for df in input.statfiles:
+            dfs.append(pd.read_table(df))
+        df = pd.concat(dfs)
+        df.to_csv(output[0], index=False, sep='\t', na_rep='NA')
+   
+rule filter_ctx: 
+    input:
+        vcf='batch_integration/sfari_filtered/SSC.{chrom}.vcf.gz',
+        petest='ctx_filtering/petest/SSC.{chrom}.stats',
+    output:
+        vcf='ctx_filtering/filtered_vcfs/SSC.{chrom}.vcf.gz'
+    params:
+        min_pval=3.04006137332276
+    shell:
+        """
+        awk '($2<{params.min_pval})' {input.petest} \
+          | cut -f 1 \
+          | fgrep -v -w -f - <(zcat {input.vcf}) \
+          | bgzip -c \
+          > {output.vcf}
+        """

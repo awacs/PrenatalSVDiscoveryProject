@@ -9,6 +9,7 @@
 """
 
 import argparse
+import sys
 from collections import deque
 import heapq
 import pysam
@@ -48,7 +49,7 @@ def integrate_melt(cxsv, melt, fout, window=100):
 
     for record in heapq.merge(cxsv, melt, key=lambda record: record.pos):
         if record.id in excluded_cxsv:
-            print(record.id)
+            #  print(record.id)
             continue
         fout.write(record)
 
@@ -67,7 +68,11 @@ def main():
 
     cxsv = pysam.VariantFile(args.cxsv)
     melt = pysam.VariantFile(args.melt)
-    fout = pysam.VariantFile(args.fout, 'w', header=cxsv.header)
+
+    if args.fout in '- stdout'.split():
+        fout = pysam.VariantFile(sys.stdout, 'w', header=cxsv.header)
+    else:
+        fout = pysam.VariantFile(args.fout, 'w', header=cxsv.header)
 
     integrate_melt(cxsv, melt, fout, window=args.window)
 

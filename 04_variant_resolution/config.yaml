@@ -53,9 +53,14 @@ pe_counts: '../02_evidence_assessment/02b_petest/pe_counts/cohort.txt.gz'
 sr_counts: '../../pesr_testing/split_counts/cohort.txt.gz'
 
 cutoffs:
-    Phase1: /data/talkowski/Samples/SFARI/deep_sv/asc_540/sv-pipeline/04_variant_resolution/Phase1.cutoffs.txt
-    Pilot: /data/talkowski/Samples/SFARI/deep_sv/asc_540/sv-pipeline/04_variant_resolution/Pilot.cutoffs.txt
+    Phase1: data/Phase1.cutoffs.txt
+    Pilot: data/Pilot.cutoffs.txt
 
 melt_beds:
-    Pilot: /data/talkowski/Samples/SFARI/DeepSeq/HarrisonCompare/Melt/pilot/melt.pass.bed
-    Phase1: /data/talkowski/Samples/SFARI/DeepSeq/HarrisonCompare/Melt/rebuild_pipeline/melt.pass.bed
+    Phase1: data/melt.Phase1.pass.bed
+    Pilot: data/melt.Pilot.pass.bed
+melt_dn_filter: data/melt.dn_filter.txt
+
+cytobands: ref/cytobands.bed.gz
+multiallelic: data/multiallelic_CNV_IDs.list
+final_filter: data/final_filter.bed
