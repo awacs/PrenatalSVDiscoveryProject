@@ -50,4 +50,7 @@ wildcard_constraints:
 
 rule all:
     input:
-        expand('final_variants/SSC.{chrom}.vcf.gz', chrom=CHROMS)
+        'final_variants/SSC.vcf.gz',
+        'final_variants/SSC.bed',
+        'callset_stats/SSC.v3.variant_stats.csv',
+        'callset_stats/SSC.v3.sample_stats.csv',
