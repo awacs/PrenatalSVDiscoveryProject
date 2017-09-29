@@ -10,7 +10,7 @@ rule resolve_cpx:
         #vcf='batch_integration/sfari_filtered/SSC.{chrom}.vcf.gz',
         vcf='ctx_filtering/filtered_vcfs/SSC.{chrom}.vcf.gz',
     output:
-        resolved='complex_resolution/resolved/SSC.{chrom}.vcf.gz',
+        resolved='complex_resolution/resolved/SSC.{chrom}.vcf',
         unresolved='complex_resolution/unresolved/SSC.{chrom}.vcf',
     params:
         prefix=lambda wildcards: 'SSC_CPX_{chrom}'.format(**wildcards)
@@ -20,9 +20,26 @@ rule resolve_cpx:
             {input.vcf} {config[cytobands]} {output.resolved} 
         """
 
+# TEMP FIX: Add CNV from unresolved events back to VCF
+rule restore_unresolved_cnv:
+    input:
+        resolved='complex_resolution/resolved/SSC.{chrom}.vcf',
+        unresolved='complex_resolution/unresolved/SSC.{chrom}.vcf',
+    output:
+        vcf='complex_resolution/resolved_plus_cnv/SSC.{chrom}.vcf.gz'
+    shell:
+        """
+        fgrep -e "<DEL>" -e "<DUP>" {input.unresolved} \
+          | sed -r -e 's/;EVENT=UNRESOLVED.*UNRESOLVED//' \
+          | cat {input.resolved} - \
+          | vcf-sort -c \
+          | bgzip -c \
+          > {output.vcf}
+        """
+
 rule overlap_melt:
     input:
-        resolved='complex_resolution/resolved/SSC.{chrom}.vcf.gz',
+        resolved='complex_resolution/resolved_plus_cnv/SSC.{chrom}.vcf.gz',
         melt="melt/batch_merged/SSC.{chrom}.vcf.gz"
     output:
         vcf='complex_resolution/resolved_with_melt/SSC.{chrom}.vcf.gz',
@@ -32,27 +49,11 @@ rule overlap_melt:
           | bgzip -c > {output}
         """
 
-# TEMP FIX: Add CNV from unresolved events back to VCF
-rule restore_unresolved_cnv:
-    input:
-        resolved='complex_resolution/resolved_with_melt/SSC.{chrom}.vcf.gz',
-        unresolved='complex_resolution/unresolved/SSC.{chrom}.vcf',
-    output:
-        vcf='complex_resolution/resolved_plus_cnv/SSC.{chrom}.vcf.gz'
-    shell:
-        """
-        fgrep -e "<DEL>" -e "<DUP>" {input.unresolved} \
-          | cat <(zcat {input.resolved}) - \
-          | vcf-sort -c \
-          | bgzip -c \
-          > {output.vcf}
-        """
-
 rule make_resolved_bed:
     input:
-        'complex_resolution/resolved_plus_cnv/SSC.{chrom}.vcf.gz'
+        'complex_resolution/resolved_with_melt/SSC.{chrom}.vcf.gz'
     output:
-        'complex_resolution/resolved_plus_cnv/SSC.{chrom}.bed'
+        'complex_resolution/resolved_with_melt/SSC.{chrom}.bed'
     shell:
         """
         svtools vcf2bed {input} {output}
@@ -60,9 +61,9 @@ rule make_resolved_bed:
 
 rule concat_resolved_beds:
     input:
-        expand('complex_resolution/resolved_plus_cnv/SSC.{chrom}.bed', chrom=CHROMS)
+        expand('complex_resolution/resolved_with_melt/SSC.{chrom}.bed', chrom=CHROMS)
     output:
-        'complex_resolution/resolved_plus_cnv/SSC.bed'
+        'complex_resolution/resolved_with_melt/SSC.bed'
     shell:
         """
         cat {input} \
@@ -74,7 +75,7 @@ rule concat_resolved_beds:
 
 rule sample_cnv_merge:
     input:
-        bed='complex_resolution/resolved_plus_cnv/SSC.bed'
+        bed='complex_resolution/resolved_with_melt/SSC.bed'
     output:
         'complex_resolution/sample_cnv_merging/{sample}.bed'
     wildcard_constraints:
@@ -113,7 +114,7 @@ rule link_merged_cnv:
 
 rule merge_resolved_variants:
     input:
-        vcf='complex_resolution/resolved_plus_cnv/SSC.{chrom}.vcf.gz',
+        vcf='complex_resolution/resolved_with_melt/SSC.{chrom}.vcf.gz',
         links='complex_resolution/sample_cnv_merging/SSC.links'
     output:
         'complex_resolution/resolved_and_merged/SSC.{chrom}.vcf.gz'
