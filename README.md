@@ -35,5 +35,5 @@ each provided here as a Snakemake workflow.
     Algorithm merging, batch merging, stringent de novo filtering, per-sample
     CNV merging, and resolution of complex variant.
 
-* `05_annotation/` 
+* `05_annotation/`  
     Annotation of resolved variants with genic and noncoding impacts.
