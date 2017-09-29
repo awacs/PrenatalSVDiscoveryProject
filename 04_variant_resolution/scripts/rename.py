@@ -31,6 +31,12 @@ def rename(vcf, fout):
         record.ref = 'N'
         record.stop = end
 
+        for key in record.format.keys():
+            if key != 'GT':
+                for sample in record.samples.keys():
+                    record.samples[sample].pop(key)
+                del record.format[key]
+
         for info in 'CIPOS CIEND STRANDS RMSSTD MEMBERS'.split():
             if info in record.info.keys():
                 record.info.pop(info)
