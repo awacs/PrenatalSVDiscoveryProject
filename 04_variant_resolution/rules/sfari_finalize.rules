@@ -26,7 +26,7 @@ rule filter_blacklist:
 
 rule finalize_variants:
     input:
-        'complex_resolution/resolved_and_merged/SSC.{chrom}.vcf.gz'
+        'complex_resolution/blacklist_filtered/SSC.{chrom}.vcf.gz'
     output:
         'final_variants/SSC.{chrom}.vcf.gz'
     shell:
@@ -61,8 +61,7 @@ rule make_variant_bed:
     
 rule scrape_stats:
     input:
-        # vcf='final_variants/SSC.{chrom}.vcf.gz',
-        vcf='complex_resolution/resolved_and_merged/SSC.{chrom}.vcf.gz'
+        vcf='final_variants/SSC.{chrom}.vcf.gz',
     output:
         var='callset_stats/variant_stats/SSC.{chrom}.txt',
         obs='callset_stats/sample_stats/SSC.{chrom}.txt',
