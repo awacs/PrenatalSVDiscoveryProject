@@ -8,6 +8,26 @@ customized pipeline used to combine, filter, and annotate raw SV predictions.
 ## Overview
 
 * `ref/`  
-    
-* ABC  
+   
+* `environment.yaml`  
+    Anaconda environment used during callset generation.
+ 
+* `00_preprocessing/`  
+    Conversion of raw algorithm inputs to standard VCF and BED formats.
 
+* `01_algorithm-integration/`  
+    Per-algorithm, batch-wide clustering of algorithm predictions.
+
+* `02_evidence-assessment/`  
+    Collection of PE, SR, RD, and BAF evidence supporting each putative variant
+    locus.
+
+* `03_variant-filtering/`  
+    Random-forest filtering of variants based on collected metrics.
+
+* `04_variant-resolution/`  
+    Algorithm merging, batch merging, stringent de novo filtering, per-sample
+    CNV merging, and resolution of complex variant.
+
+* `05_annotation/` 
+    Annotation of resolved variants with genic and noncoding impacts.
