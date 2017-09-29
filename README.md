@@ -8,9 +8,15 @@ customized pipeline used to combine, filter, and annotate raw SV predictions.
 ## Overview
 
 * `ref/`  
+    Reference files used for callset generation and curation.
    
 * `environment.yaml`  
     Anaconda environment used during callset generation.
+
+## SV pipeline
+
+SV detection and filtering was broken into a series of self-contained modules,
+each provided here as a Snakemake workflow.
  
 * `00_preprocessing/`  
     Conversion of raw algorithm inputs to standard VCF and BED formats.
