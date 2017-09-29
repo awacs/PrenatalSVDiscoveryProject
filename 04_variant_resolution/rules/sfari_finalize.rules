@@ -1,4 +1,29 @@
 
+rule genotype_homozygous:
+    input:
+        'complex_resolution/resolved_and_merged/SSC.{chrom}.vcf.gz'
+    output:
+        'complex_resolution/with_homozygous/SSC.{chrom}.vcf.gz'
+    shell:
+        """
+        {config[scripts]}/mark_homozygous.py {input} {config[homozygotes]} stdout \
+          | bgzip -c > {output}
+        """
+
+rule filter_blacklist:
+    input:
+        'complex_resolution/with_homozygous/SSC.{chrom}.vcf.gz'
+    output:
+        'complex_resolution/blacklist_filtered/SSC.{chrom}.vcf.gz'
+    shell:
+        """
+        {config[scripts]}/filter_blacklist.sh {input} {config[blacklist]} \
+          | sort -u \
+          | fgrep -v -w -f - <(zcat {input}) \
+          | bgzip -c \
+          > {output}
+        """
+
 rule finalize_variants:
     input:
         'complex_resolution/resolved_and_merged/SSC.{chrom}.vcf.gz'
@@ -14,9 +39,30 @@ rule finalize_variants:
         tabix -p vcf {output}
         """
 
+rule merge_variants:
+    input:
+        expand('final_variants/SSC.{chrom}.vcf.gz', chrom=CHROMS)
+    output:
+        'final_variants/SSC.vcf.gz'
+    shell:
+        """
+        vcf-concat {input} | vcf-sort -c | bgzip -c > {output}
+        """
+
+rule make_variant_bed:
+    input:
+        'final_variants/SSC.vcf.gz'
+    output:
+        'final_variants/SSC.bed'
+    shell:
+        """
+        svtools vcf2bed {input} {output} -i CHR2 -i END -i CPX_TYPE
+        """
+    
 rule scrape_stats:
     input:
-        vcf='final_variants/SSC.{chrom}.vcf.gz',
+        # vcf='final_variants/SSC.{chrom}.vcf.gz',
+        vcf='complex_resolution/resolved_and_merged/SSC.{chrom}.vcf.gz'
     output:
         var='callset_stats/variant_stats/SSC.{chrom}.txt',
         obs='callset_stats/sample_stats/SSC.{chrom}.txt',
