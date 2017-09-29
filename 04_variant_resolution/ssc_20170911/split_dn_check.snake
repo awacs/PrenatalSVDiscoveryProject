@@ -1,0 +1,119 @@
+
+configfile: 'config.yaml'
+
+import glob
+import pandas as pd
+
+EVIDENCE = 'pesr depth'.split()
+RF_STATUS = 'pass raw'.split()
+TESTS = 'petest rdtest srtest'.split()
+CHROMS = [str(x) for x in range(1, 23)] + 'X Y'.split()
+
+rule all:
+    input:
+        expand('split_dn_check/pesr/{rf_status}/{test}/{batch}.{chrom}.stats',
+               evidence=EVIDENCE, rf_status=RF_STATUS, test=TESTS, batch=['Pilot'], chrom=CHROMS),
+        expand('split_dn_check/pesr/{rf_status}/{test}/{batch}.{chrom}.stats',
+               evidence=EVIDENCE, rf_status=['pass'], test=TESTS, batch=['Phase1'], chrom=CHROMS),
+        expand('split_dn_check/depth/{rf_status}/{test}/{batch}.{chrom}.stats',
+               evidence=EVIDENCE, rf_status=RF_STATUS, test=['rdtest'], batch=['Pilot'], chrom=CHROMS),
+        expand('split_dn_check/depth/{rf_status}/{test}/{batch}.{chrom}.stats',
+               evidence=EVIDENCE, rf_status=['pass'], test=['rdtest'], batch=['Phase1'], chrom=CHROMS),
+
+rule restore_header:
+    input:
+        vcf='vcfcluster/{evidence}/{rf_status}/{batch}.{chrom}.vcf.gz',
+        split='split_dn_check/{evidence}/{rf_status}/splits/{batch}.{chrom}.{split}'
+    output:
+        split='split_dn_check/{evidence}/{rf_status}/vcfs/{batch}.{chrom}.{split}.vcf.gz'
+    wildcard_constraints:
+        evidence='(pesr|depth)'
+    shell:
+        """
+        cat <(zcat {input.vcf} | sed -n -e '/^#/p') {input.split} \
+          | bgzip -c > {output.split};
+        """
+
+rule make_rdtest_beds:
+    input:
+        vcf='split_dn_check/{evidence}/{rf_status}/vcfs/{batch}.{chrom}.{split}.vcf.gz'
+    output:
+        bed='split_dn_check/{evidence}/{rf_status}/beds/{batch}.{chrom}.{split}.bed'
+    shell:
+        """
+        svtools vcf2bed {input.vcf} stdout \
+          | fgrep -e "DEL" -e "DUP" -e "#chrom" \
+          | awk -v OFS="\\t" '{{print $1, $2, $3, $4, $6, $5}}' \
+          > {output.bed}
+        """
+    
+rule split_rdtest:
+    input:
+        bed='split_dn_check/{evidence}/{rf_status}/beds/{batch}.{chrom}.{split}.bed'
+    output:
+        stats='split_dn_check/{evidence}/{rf_status}/rdtest_splits/{batch}.{chrom}.{split}.denovo'  
+    params:
+        whitelist=lambda wildcards: '../ref/samples.{batch}.list'.format(**wildcards)
+    shell:
+        """
+        Rscript {config[rdtest]} \
+          -b {input.bed} \
+          -c {config[coveragefile]} \
+          -m {config[medianfile]} \
+          -f {config[famfile]} \
+          -o split_dn_check/{wildcards.evidence}/{wildcards.rf_status}/rdtest_splits/ \
+          -n {wildcards.batch}.{wildcards.chrom}.{wildcards.split} \
+          -w {params.whitelist} \
+          -d True
+        """
+        
+rule reformat_rdtest:
+    input:
+        stats='split_dn_check/{evidence}/{rf_status}/rdtest_splits/{batch}.{chrom}.{split}.denovo'  
+    output:
+        stats='split_dn_check/{evidence}/{rf_status}/rdtest_splits/{batch}.{chrom}.{split}.stats'  
+    shell:
+        """
+        ../scripts/reformat_dn_rdtest.py {input} {output}
+        """
+    
+rule split_pesr_dn_check:
+    input:
+        split='split_dn_check/{evidence}/{rf_status}/vcfs/{batch}.{chrom}.{split}.vcf.gz'
+    output:
+        petest='split_dn_check/{evidence}/{rf_status}/petest_splits/{batch}.{chrom}.{split}.stats',
+        srtest='split_dn_check/{evidence}/{rf_status}/srtest_splits/{batch}.{chrom}.{split}.stats'  
+    wildcard_constraints:
+        evidence='(pesr|depth)'
+    shell:
+        """
+        ../scripts/dn-check.py {input.split} \
+          -c {config[sr_counts]} -d {config[pe_counts]} \
+          {output.petest} {output.srtest}
+        """
+
+def get_splits(wildcards):
+    split_path = 'split_dn_check/{evidence}/{rf_status}/splits/{batch}.{chrom}.*'
+    split_path = split_path.format(**wildcards)
+    splits = glob.glob(split_path)
+    splits = [f.split('.')[-1] for f in splits]
+
+    path = 'split_dn_check/{evidence}/{rf_status}/{test}_splits/{batch}.{chrom}.{split}.stats'
+    test_splits = [path.format(split=split, **wildcards) for split in splits]
+    
+    return test_splits
+
+rule aggregate_splits:
+    input:
+        statfiles=get_splits
+    output:
+        'split_dn_check/{evidence}/{rf_status}/{test}/{batch}.{chrom}.stats',
+    wildcard_constraints:
+        test='(petest|srtest|rdtest)'
+    run:
+        dfs = []
+        for df in input.statfiles:
+            dfs.append(pd.read_table(df))
+        df = pd.concat(dfs)
+        df.to_csv(output[0], index=False, sep='\t', na_rep='NA')
+    
