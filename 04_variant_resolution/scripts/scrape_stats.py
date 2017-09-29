@@ -72,6 +72,12 @@ def scrape_record_stats(record, sample_keys):
     n_parents = len(parents)
     n_children = len(children)
 
+    homs = [s for s in called if record.samples[s]['GT'] == (1, 1)]
+    hets = [s for s in called if record.samples[s]['GT'] == (0, 1)]
+
+    n_homs = len(homs)
+    n_hets = len(hets)
+
     n_pilot = len([s for s in called if s in sample_keys['Pilot']])
     n_phase1 = len([s for s in called if s in sample_keys['Phase1']])
 
@@ -89,7 +95,7 @@ def scrape_record_stats(record, sample_keys):
     statline = ('{chrom}\t{start}\t{end}\t'
                 '{name}\t{svtype}\t{svsize}\t{sources}\t'
                 '{n_called}\t{n_quads}\t{n_parents}\t{n_children}\t'
-                '{n_pilot}\t{n_phase1}\t'
+                '{n_homs}\t{n_hets}\t{n_pilot}\t{n_phase1}\t'
                 '{n_denovo}\t{n_maternal}\t{n_paternal}\t{n_biparental}\t'
                 '{called}')
 
@@ -177,7 +183,7 @@ class StatsScraper:
         header = ('chrom\tstart\tend\t'
                   'name\tsvtype\tsvsize\tsources\t'
                   'n_called\tn_quads\tn_parents\tn_children\t'
-                  'n_pilot\tn_phase1\t'
+                  'n_homs\tn_hets\tn_pilot\tn_phase1\t'
                   'n_denovo\tn_maternal\tn_paternal\tn_biparental\t'
                   'called\n')
         return header
