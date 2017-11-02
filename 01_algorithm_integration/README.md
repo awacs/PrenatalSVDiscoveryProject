@@ -80,3 +80,87 @@ All variables controlling pipeline operation can be modified in `config.yaml`.
 
 * `bedcluster` : list of params  
     bedcluster parameters; see `svtools bedcluster -h` for details
+
+### Batches
+The workflow requires a `batch` key, describing each sample in the cohort and the batch to which they belong. An example:
+```
+sample       group   batch
+fam1.fa      fam1   Pilot
+fam1.mo      fam1   Pilot
+fam1.p1      fam1   Pilot
+fam1.s1      fam1   Pilot
+fam2.fa      fam2   Phase1
+fam2.mo      fam2   Phase1
+fam2.p1      fam2   Phase1
+fam2.s1      fam2   Phase1
+```
+Note the `group` column. Each algorithm was run on some group of samples, which we are now trying to integrate. The `group` column indicates the ID used for each group in the original algorithm runs, and is used to identify the corresponding VCF for each sample.
+The configuration variable `batches indicates the key to use.
+
+### vcflists
+For each algorithm to be processed, a `vcflist` describing location of the per-sample vcf should be prepared, names as `{batch}.{source}.list` and placed under `vcflist/`. Here's an example:
+```
+../00_preprocessing/filtered_vcfs/delly.sample1.vcf.gz
+../00_preprocessing/filtered_vcfs/delly.sample2.vcf.gz
+../00_preprocessing/filtered_vcfs/delly.sample3.vcf.gz
+```
+
+### PE/SR algorithms (VCFs)
+Calls from PE/SR algorithms must be provided as standardized VCFs (see Module 0). The filepath to each individual VCF must be labeled with the file's source, i.e., the algorithm which produced it, and the group of samples included in the file. As example:
+```
+delly.11002.vcf.gz
+delly.11006.vcf.gz
+```
+The workflow will search for these files in the specified `input_vcfs` directory.
+```
+input_vcfs: ../00_preprocessing/filtered_vcfs/
+```
+
+### Depth algorithms (BEDs)
+Depth calls should be concatenated into one BED per batch and CNV type, with each entry corresponding to a call in a single sample (see Module 0 for details). The filepath to each individual BED must again be formatted accordingly, here with the `batch` of samples and the `svtype` included. As example:
+```
+Phase1.DEL.vcf.gz
+```
+
+The workflow will search for these files in the specified `input_beds` directory.
+```
+input_vcfs: ../00_preprocessing/std_beds/
+```
+
+
+## Manual process 
+
+Follow these steps to manually cluster pair-end split read (pesr) calls:
+
+1. Cluster all VCFs in a batch from a given algorithm
+```
+svtype vcfcluster vcflists/{batch}.{source}.list vcfcluster/{batch}.{source}.{chrom}.vcf -r {chrom}
+bgzip vcfcluster/{batch}.{source}.{chrom}.vcf
+tabix vcfcluster/{batch}.{source}.{chrom}.vcf.gz
+```
+2. Convert to RdTest format
+```
+python scripts/make_pesr_rdtest_bed.py vcfcluster/{batch}.{source}.{chrom}.vcf.gz rdtest_beds/{batch}.{source}.{chrom}.bed
+```
+
+
+Follow these steps to manually cluster depth calls:
+
+1. Cluter CNV calls
+
+```
+svtools bedcluster ../00_preprocessing/std_beds/{batch}.{svtype}.bed.gz -r {chrom} -p {batch}_depth_{svtype}_{chrom} > bedcluster/{batch}.{svtype}.{chrom}.bed
+```
+2. Aggregate observations into variants and convert to RdTest format
+```
+cat \
+  <(scripts/make_depth_rdtest_bed.py {batch}.DEL.{chrom}.bed} | sed '1d') \
+  <(scripts/make_depth_rdtest_bed.py {batch}.DUP.{chrom}.bed} | sed '1d') \
+  | sort -k1,1V -k2,2n \
+  | cat <(echo -e "#chrom start end name samples svtype" | sed -e 's/ /\\t/g') - \
+  > rdtest_beds/{batch}.depth.{chrom}.bed
+```
+3. Transform rdtest_beds to vcf
+```
+svtools rdtest2vcf rdtest_beds/{batch}.depth.{chrom}.bed ref/batches.list vcfcluster/{batch}.depth.{chrom}.vcf.gz
+```
