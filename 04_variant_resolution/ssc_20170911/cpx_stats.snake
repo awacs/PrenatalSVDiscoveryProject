@@ -23,7 +23,7 @@ rule make_bed:
         'cpx_beds/{dirname}/SSC.{chrom}.bed'
     shell:
         """
-        svtools vcf2bed -i CPX_TYPE {input} stdout \
+        svtk vcf2bed -i CPX_TYPE {input} stdout \
           | fgrep -e "CPX" -e "melt" \
           > {output}
         """

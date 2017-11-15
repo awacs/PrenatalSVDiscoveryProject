@@ -27,16 +27,16 @@ rule per_sample_merge:
     shell:
         """
         cat \
-            <( svtools vcf2bed {input.vcf} stdout \
+            <( svtk vcf2bed {input.vcf} stdout \
                  | awk '($5=="DEL")' \
                  | fgrep -w -e "{wildcards.sample}"  \
                  | bedtools merge -i stdin -c 4 -o distinct) \
-            <( svtools vcf2bed {input.vcf} stdout \
+            <( svtk vcf2bed {input.vcf} stdout \
                  | awk '($5=="DUP")' \
                  | fgrep -w -e "{wildcards.sample}"  \
                  | bedtools merge -i stdin -c 4 -o distinct) \
           | sort -k1,1V -k2,2n \
-          | cat <(svtools vcf2bed {input.vcf} stdout | head -n1) - \
+          | cat <(svtk vcf2bed {input.vcf} stdout | head -n1) - \
           | fgrep -e "," -e "#chrom" \
           > {output}
         """

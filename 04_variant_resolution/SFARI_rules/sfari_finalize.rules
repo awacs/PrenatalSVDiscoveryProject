@@ -31,7 +31,7 @@ rule make_blacklist_filtered_bed:
         'complex_resolution/blacklist_filtered/SSC.{chrom}.bed'
     shell:
         """
-        svtools vcf2bed {input} {output}
+        svtk vcf2bed {input} {output}
         """
 
 rule self_intersect:
@@ -94,7 +94,7 @@ rule make_variant_bed:
         'final_variants/SSC.bed'
     shell:
         """
-        svtools vcf2bed {input} {output} -i CHR2 -i END -i CPX_TYPE
+        svtk vcf2bed {input} {output} -i CHR2 -i END -i CPX_TYPE
         """
     
 rule scrape_stats:

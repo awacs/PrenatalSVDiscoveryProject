@@ -22,7 +22,7 @@ rule annotate_coding:
         subset=CODING_WILDCARDS
     shell:
         """
-        svtools annotate \
+        svtk annotate \
           --gencode {input.gencode} \
           {input.vcf} \
           {output.vcf}
@@ -36,7 +36,7 @@ rule annotate_promoters:
         vcf='annotated_vcfs/SSC.promoter.{chrom}.vcf'
     shell:
         """
-        svtools annotate \
+        svtk annotate \
           --noncoding {input.promoters} \
           {input.vcf} \
           {output.vcf}
@@ -50,7 +50,7 @@ rule annotate_functional:
         vcf='annotated_vcfs/SSC.functional.{chrom}.vcf'
     shell:
         """
-        svtools annotate \
+        svtk annotate \
           --noncoding {input.functional} \
           {input.vcf} \
           {output.vcf}
@@ -65,7 +65,7 @@ rule tabulate_coding_annotations:
         subset=CODING_WILDCARDS
     shell:
         """
-        svtools vcf2bed {input.vcf} {output.bed} \
+        svtk vcf2bed {input.vcf} {output.bed} \
           -i LOF -i COPY_GAIN -i INTRONIC -i DUP_PARTIAL -i INV_SPAN \
           -i NEAREST_TSS -i INTRAGENIC \
         """
@@ -79,7 +79,7 @@ rule tabulate_noncoding_annotations:
         subset=NONCODING_WILDCARDS
     shell:
         """
-        svtools vcf2bed {input.vcf} {output.bed} -i NONCODING 
+        svtk vcf2bed {input.vcf} {output.bed} -i NONCODING 
         """
 
 rule concatenate_beds:

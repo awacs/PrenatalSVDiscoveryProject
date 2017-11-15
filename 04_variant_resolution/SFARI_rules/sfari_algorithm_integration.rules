@@ -61,7 +61,7 @@ rule merge_algorithms:
         prefix=lambda wildcards: '{batch}_{chrom}_{evidence}_{rf_status}'.format(**wildcards)
     shell:
         """
-        svtools vcfcluster {input} stdout \
+        svtk vcfcluster {input} stdout \
             -p {params.prefix} \
             -d {params.vcfcluster[dist]} \
             -f {params.vcfcluster[frac]} \

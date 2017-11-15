@@ -22,7 +22,7 @@ PESR_SOURCES = config['pesr_sources']
 #     shell:
 #         """
 #         {config[scripts]}/get_denovo_candidates.py {input.vcf} stdout \
-#           | svtools vcf2bed stdin stdout \
+#           | svtk vcf2bed stdin stdout \
 #           | fgrep -e "DEL" -e "DUP" -e "#chrom" \
 #           | awk -v OFS="\\t" '{{print $1, $2, $3, $4, $6, $5}}' \
 #           > {output.bed}

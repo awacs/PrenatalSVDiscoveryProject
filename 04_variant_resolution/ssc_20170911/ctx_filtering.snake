@@ -34,7 +34,7 @@ rule ctx_petest:
         'ctx_filtering/petest_splits/SSC.{chrom}.{split}.stats'
     shell:
         """
-        svtools pe-test {input} {config[pe_counts]} {output}
+        svtk pe-test {input} {config[pe_counts]} {output}
         """
 
 rule ctx_srtest:
@@ -44,7 +44,7 @@ rule ctx_srtest:
         'ctx_filtering/srtest_splits/SSC.{chrom}.{split}.stats'
     shell:
         """
-        svtools sr-test {input} {config[sr_counts]} {output}
+        svtk sr-test {input} {config[sr_counts]} {output}
         """
 
 def get_splits(wildcards):

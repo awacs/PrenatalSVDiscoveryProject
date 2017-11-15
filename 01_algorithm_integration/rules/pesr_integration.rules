@@ -61,7 +61,7 @@ rule vcfcluster:
         prefix=lambda wildcards: '{0}_{1}'.format(wildcards.batch, wildcards.source)
     shell:
         """
-        svtools vcfcluster {input} stdout \
+        svtk vcfcluster {input} stdout \
             -r {wildcards.chrom} \
             -p {params.prefix} \
             -d {params.dist} \

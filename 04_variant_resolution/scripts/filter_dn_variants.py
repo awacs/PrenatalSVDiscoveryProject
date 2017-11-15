@@ -12,7 +12,7 @@ import argparse
 import sys
 from collections import defaultdict
 import pysam
-import svtools.utils as svu
+import svtk.utils as svu
 
 
 def set_null(record, sample):

@@ -12,7 +12,7 @@ import argparse
 import sys
 import pandas as pd
 import pysam
-import svtools.utils as svu
+import svtk.utils as svu
 
 
 def final_filter(vcf, bed, chrom=None):

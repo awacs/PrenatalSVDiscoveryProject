@@ -13,8 +13,8 @@ import sys
 import pysam
 import numpy as np
 import pandas as pd
-from svtools.vcfcluster import VCFCluster
-import svtools.utils as svu
+from svtk.vcfcluster import VCFCluster
+import svtk.utils as svu
 
 
 def is_batch_only(cluster, batch):

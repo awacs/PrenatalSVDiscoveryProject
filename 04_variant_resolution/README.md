@@ -53,20 +53,20 @@ Each list file contains the filtered vcf file from different algorithm on the sa
 Follow these steps to process through this step:
 1a. Cluster VCFs across algorithms
 ```
-svtools vcfcluster vcflists/pesr/{batch}.10.list stdout -p {batch} -d dist -f frac -x blacklist -z svsize -t svtypes | vcf-sort -c | bgzip -c > vcfcluster/pesr/{batch}.10.vcf.gz
+svtk vcfcluster vcflists/pesr/{batch}.10.list stdout -p {batch} -d dist -f frac -x blacklist -z svsize -t svtypes | vcf-sort -c | bgzip -c > vcfcluster/pesr/{batch}.10.vcf.gz
 tabix -p vcf vcfcluster/pesr/{batch}.10.vcf.gz
 ```
 
 1b. Cluster VCFs from pesr and rd algorithms
 
 ```
-svtools vcfcluster vcflists/pesr_depth/{batch}.10.list stdout -p {batch} -d dist -f frac -x blacklist -z svsize -t svtypes | vcf-sort -c | bgzip -c > vcfcluster/pesr_depth/{batch}.10.vcf.gz
+svtk vcfcluster vcflists/pesr_depth/{batch}.10.list stdout -p {batch} -d dist -f frac -x blacklist -z svsize -t svtypes | vcf-sort -c | bgzip -c > vcfcluster/pesr_depth/{batch}.10.vcf.gz
 tabix -p vcf vcfcluster/pesr_depth/{batch}.10.vcf.gz
 ```
 
 2. Link complex SVs:
 ``` 
-svtools resolve -p {batch}_CPX_{chrom} vcfcluster/pesr_depth/{batch}.{chrom}.vcf.gz complex_linking/{batch}.{chrom}.resolved.vcf -u complex_linking/{batch}.{chrom}.unresolved.vcf
+svtk resolve -p {batch}_CPX_{chrom} vcfcluster/pesr_depth/{batch}.{chrom}.vcf.gz complex_linking/{batch}.{chrom}.resolved.vcf -u complex_linking/{batch}.{chrom}.unresolved.vcf
 ```
 
 3. Merge raw vcfs 

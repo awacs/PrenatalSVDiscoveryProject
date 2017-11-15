@@ -12,7 +12,7 @@ import argparse
 import itertools
 from collections import defaultdict
 import pysam
-import svtools.utils as svu
+import svtk.utils as svu
 
 
 def get_inh(called):

@@ -28,7 +28,7 @@ from collections import defaultdict, deque
 import numpy as np
 import pysam
 from natsort import natsorted
-import svtools.utils as svu
+import svtk.utils as svu
 
 
 class PESRCollection:

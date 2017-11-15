@@ -14,7 +14,7 @@ import heapq
 import itertools
 from collections import deque, defaultdict
 import pysam
-import svtools.utils as svu
+import svtk.utils as svu
 
 
 def add_samples(pesr_record, depth_record):

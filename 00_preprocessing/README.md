@@ -100,7 +100,7 @@ contributed to each merged call.
 PE/SR preprocess includes these steps: 
 1. standardize vcf format
 ```
-svtools standardize  {source}.{group} data/raw_vcfs/{source}/{source}.{group}.vcf.gz std_vcfs/{source}.{group}.vcf {source}
+svtk standardize  {source}.{group} data/raw_vcfs/{source}/{source}.{group}.vcf.gz std_vcfs/{source}.{group}.vcf {source}
 ```
 2. identify and remove vcf outliers  
 ```

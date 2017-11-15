@@ -16,7 +16,7 @@ rule resolve_cpx:
         prefix=lambda wildcards: 'SSC_CPX_{chrom}'.format(**wildcards)
     shell:
         """
-        svtools resolve -p {params.prefix} -u {output.unresolved} \
+        svtk resolve -p {params.prefix} -u {output.unresolved} \
             {input.vcf} {config[cytobands]} {output.resolved} 
         """
 
@@ -57,7 +57,7 @@ rule make_resolved_bed:
         'complex_resolution/resolved_with_melt/SSC.{chrom}.bed'
     shell:
         """
-        svtools vcf2bed {input} {output}
+        svtk vcf2bed {input} {output}
         """
 
 rule concat_resolved_beds:

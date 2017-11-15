@@ -41,7 +41,7 @@ rule make_rdtest_beds:
         bed='split_dn_check/{evidence}/{rf_status}/beds/{batch}.{chrom}.{split}.bed'
     shell:
         """
-        svtools vcf2bed {input.vcf} stdout \
+        svtk vcf2bed {input.vcf} stdout \
           | fgrep -e "DEL" -e "DUP" -e "#chrom" \
           | awk -v OFS="\\t" '{{print $1, $2, $3, $4, $6, $5}}' \
           > {output.bed}

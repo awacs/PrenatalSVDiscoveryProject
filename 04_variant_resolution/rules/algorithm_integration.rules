@@ -55,7 +55,7 @@ rule vcfcluster:
         prefix=lambda wildcards: '{0}'.format(wildcards.batch)
     shell:
         """
-        svtools vcfcluster {input} stdout \
+        svtk vcfcluster {input} stdout \
             -p {params.prefix} \
             -d {params.vcfcluster[dist]} \
             -f {params.vcfcluster[frac]} \
@@ -77,7 +77,7 @@ rule vcfcluster:
 #         prefix=lambda wildcards: '{batch}_CPX_{chrom}'.format(**wildcards)
 #     shell:
 #         """
-#         svtools resolve -p {params.prefix} {input.vcf} {output.bed} -u {output.unresolved}
+#         svtk resolve -p {params.prefix} {input.vcf} {output.bed} -u {output.unresolved}
 #         """
 
 rule merge_raw_vcfs:

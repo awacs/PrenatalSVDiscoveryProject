@@ -57,7 +57,7 @@ rule get_blacklist_coverage:
 #         'SV.samples'
 #     run:
 #         import pysam
-#         import svtools.utils as svu
+#         import svtk.utils as svu
 #         with open(output[0]) as fout:
 #             for vcfpath in input:
 #                 vcf = pysam.VariantFile(vcfpath)

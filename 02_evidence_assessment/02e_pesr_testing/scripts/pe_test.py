@@ -17,7 +17,7 @@ import numpy as np
 import scipy.stats as ss
 import pandas as pd
 import pysam
-import svtools.pesr as pesr
+import svtk.pesr as pesr
 
 
 class _DiscPair:

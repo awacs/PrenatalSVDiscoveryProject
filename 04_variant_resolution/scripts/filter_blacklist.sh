@@ -11,7 +11,7 @@ vcf=$1
 blacklist=$2
 
 bed=${vcf}.tmp.bed
-svtools vcf2bed $vcf $bed
+svtk vcf2bed $vcf $bed
 
 # 30% coverage
 bedtools coverage -a $bed -b $blacklist \

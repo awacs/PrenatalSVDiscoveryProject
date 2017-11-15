@@ -18,7 +18,7 @@ rule petest_autosomes:
         chrom='(' + '|'.join(AUTOSOMES) + ')'
     shell:
          """
-         svtools pe-test {input.vcf} {config[pe_counts]} {output.metrics}
+         svtk pe-test {input.vcf} {config[pe_counts]} {output.metrics}
          """
 
 rule petest_allosomes:
@@ -30,7 +30,7 @@ rule petest_allosomes:
         whitelist='whitelists/{batch}.{sex}.list'
     shell:
          """
-         svtools pe-test --samples {params.whitelist} \
+         svtk pe-test --samples {params.whitelist} \
             {input.vcf} {config[pe_counts]} {output.metrics}
          """
 

@@ -13,7 +13,7 @@ rule count_raw_pesr:
         'qc/raw_counts/{source}.{group}.txt'
     shell:
         """
-        svtools count-svtypes {input} {output}
+        svtk count-svtypes {input} {output}
         """
 
 rule count_filtered_pesr:
@@ -23,7 +23,7 @@ rule count_filtered_pesr:
         'qc/filtered_counts/{source}.{group}.txt'
     shell:
         """
-        svtools count-svtypes {input} {output}
+        svtk count-svtypes {input} {output}
         """
 
 def get_counts(wildcards):

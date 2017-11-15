@@ -13,9 +13,9 @@ import argparse
 import itertools
 import numpy as np
 import pysam
-import svtools.utils as svu
+import svtk.utils as svu
 import pandas as pd
-from svtools.pesr import PESRTestRunner, SRTest, PETest
+from svtk.pesr import PESRTestRunner, SRTest, PETest
 
 
 def get_denovo_candidates(record, max_parents=20):

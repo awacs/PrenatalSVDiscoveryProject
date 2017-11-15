@@ -4,9 +4,9 @@ This repository contains the workflow that evaluates split read support for all 
 ## Required matrics
 Sr matrics should be prepared for this process. The matircs describes soft clipped alignments in all individuals, and can be collectd from the aligned sequenes by following these steps:
 
-1. run `svtools collect-pesr` to collect split read information:
+1. run `svtk collect-pesr` to collect split read information:
 ```
-svtools collect-pesr sample.bam split_count/sample.txt pe_count/sample.txt
+svtk collect-pesr sample.bam split_count/sample.txt pe_count/sample.txt
 ```
 
 2. add sample name as an extra column to each pe_count output:
@@ -71,12 +71,12 @@ This file describes the family structure in batch
 Autosomes and allosomes should be processed separately, with two whitelists contaning samples names of all males (whitelists/{batch}.males.list) and females(whitelists/{batch}.females.list) prepared. The whitelists have one sample name in each line.
 For autosomes:
 ```
-svtools pe-test ../../01_algorithm_integration/vcfcluster/{batch}.{source}.{chrom}.vcf.gz matircs.sr.sorted.txt.gz srtest/{batch}.{source}.{chrom}.stats
+svtk pe-test ../../01_algorithm_integration/vcfcluster/{batch}.{source}.{chrom}.vcf.gz matircs.sr.sorted.txt.gz srtest/{batch}.{source}.{chrom}.stats
 ```
 For allosomes:
 ```
-svtools sr-test --samples whitelists/{batch}.females.list ../../01_algorithm_integration/vcfcluster/{batch}.{source}.{chrom}.vcf.gz  matircs.sr.sorted.txt.gz srtest_allosomes/{batch}.{source}.{chrom}.females.stats
-svtools sr-test --samples whitelists/{batch}.males.list ../../01_algorithm_integration/vcfcluster/{batch}.{source}.{chrom}.vcf.gz  matircs.sr.sorted.txt.gz srtest_allosomes/{batch}.{source}.{chrom}.males.stats
+svtk sr-test --samples whitelists/{batch}.females.list ../../01_algorithm_integration/vcfcluster/{batch}.{source}.{chrom}.vcf.gz  matircs.sr.sorted.txt.gz srtest_allosomes/{batch}.{source}.{chrom}.females.stats
+svtk sr-test --samples whitelists/{batch}.males.list ../../01_algorithm_integration/vcfcluster/{batch}.{source}.{chrom}.vcf.gz  matircs.sr.sorted.txt.gz srtest_allosomes/{batch}.{source}.{chrom}.males.stats
 python script/sr_merge_allosomes.py batch source chrom X
 python script/sr_merge_allosomes.py batch source chrom Y
 ```
@@ -92,9 +92,9 @@ vcf-sort split_out > split_out.vcf
 bgzip split_out.vcf
 tabix split_out.vcf.gz
 ```
-For each split vcf, apply `svtools sr-test` and them merge them:
+For each split vcf, apply `svtk sr-test` and them merge them:
 ```
-svtools sr-test split_out.vcf.gz matircs.split.sorted.txt.gz split_srtest/split_out.stats
+svtk sr-test split_out.vcf.gz matircs.split.sorted.txt.gz split_srtest/split_out.stats
 cat {input} | sed -r -e '/^chr\\s/d' | sort -k1,1V -k2,2n | cat <(head -n1 {input[0]}) - > {output}
 ```
 

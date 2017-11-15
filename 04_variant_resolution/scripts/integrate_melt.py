@@ -13,7 +13,7 @@ import sys
 from collections import deque
 import heapq
 import pysam
-import svtools.utils as svu
+import svtk.utils as svu
 
 
 def samples_overlap(samplesA, samplesB, upper_thresh=0.8, lower_thresh=0.5):

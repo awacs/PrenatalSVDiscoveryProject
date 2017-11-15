@@ -38,13 +38,13 @@ configuration or data files.
 $ snakemake clean
 ```
 
-## Install svtools
-`svtools` is required for the process of `SV-Adjudicator` and is included in this repository. To install `svtools`,
+## Install svtk
+`svtk` is required for the process of `SV-Adjudicator` and is included in this repository. To install `svtk`,
 ```
-cd svtools
+cd svtk
 python setup.py install --user
 ```
-For more details about `svtools`, refer to the subfolder.
+For more details about `svtk`, refer to the subfolder.
 
 ## Explicit Dependencies
 
@@ -81,12 +81,12 @@ page](https://snakemake.readthedocs.io/en/stable/). A
 available.
 
 ### SVtools
-The pipeline requires the `svtools` Python package, which is currently
+The pipeline requires the `svtk` Python package, which is currently
 available only on github.
 
 ```
-$ git clone git@github.com:talkowski-lab/svtools.git
-$ cd svtools
+$ git clone git@github.com:talkowski-lab/svtk.git
+$ cd svtk
 $ pip install -e .
 ```
 

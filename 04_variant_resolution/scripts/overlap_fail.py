@@ -11,9 +11,9 @@
 import argparse
 import sys
 import pysam
-import svtools.utils as svu
-from svtools.vcfcluster import VCFCluster
-from svtools.svfile import SVRecordCluster
+import svtk.utils as svu
+from svtk.vcfcluster import VCFCluster
+from svtk.svfile import SVRecordCluster
 
 
 def samples_overlap(samplesA, samplesB, upper_thresh=0.8, lower_thresh=0.5):

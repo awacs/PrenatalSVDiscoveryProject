@@ -13,7 +13,7 @@ import argparse
 import sys
 import itertools
 import pysam
-import svtools.utils as svu
+import svtk.utils as svu
 
 
 def get_denovo_candidates(record, max_parents=10):

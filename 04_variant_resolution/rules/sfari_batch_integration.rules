@@ -123,7 +123,7 @@ rule get_denovo:
     shell:
         """
         {config[scripts]}/get_denovo_candidates.py {input.vcf} stdout \
-          | svtools vcf2bed stdin stdout \
+          | svtk vcf2bed stdin stdout \
           | fgrep -e DEL -e DUP \
           > {output.bed}
         """

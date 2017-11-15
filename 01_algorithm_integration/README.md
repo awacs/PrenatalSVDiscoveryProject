@@ -76,10 +76,10 @@ All variables controlling pipeline operation can be modified in `config.yaml`.
     Mostly useful for testing. (Default: DEL,DUP)
 
 * `vcfcluster` : list of params  
-    vcfcluster parameters; see `svtools vcfcluster -h` for details
+    vcfcluster parameters; see `svtk vcfcluster -h` for details
 
 * `bedcluster` : list of params  
-    bedcluster parameters; see `svtools bedcluster -h` for details
+    bedcluster parameters; see `svtk bedcluster -h` for details
 
 ### Batches
 The workflow requires a `batch` key, describing each sample in the cohort and the batch to which they belong. An example:
@@ -134,7 +134,7 @@ Follow these steps to manually cluster pair-end split read (pesr) calls:
 
 1. Cluster all VCFs in a batch from a given algorithm
 ```
-svtools vcfcluster vcflists/{batch}.{source}.list stdout -r {chrom} -d 300 -f 0.1 -x {blacklist} -z 0 -t {SVtype} | vcf-sort -c | bgzp -c > vcfcluster/{batch}.{source}.{chrom}.vcf.gz 
+svtk vcfcluster vcflists/{batch}.{source}.list stdout -r {chrom} -d 300 -f 0.1 -x {blacklist} -z 0 -t {SVtype} | vcf-sort -c | bgzp -c > vcfcluster/{batch}.{source}.{chrom}.vcf.gz 
 tabix vcfcluster/{batch}.{source}.{chrom}.vcf.gz
 ```
 note: `SVtype` usually represents `DEL,DUP,INV,BND` for **pesr** caller and `INS` for **MEI** caller
@@ -150,7 +150,7 @@ Follow these steps to manually cluster depth calls:
 1. Cluter CNV calls
 
 ```
-svtools bedcluster ../00_preprocessing/std_beds/{batch}.{svtype}.bed.gz -r {chrom} -p {batch}_depth_{svtype}_{chrom} > bedcluster/{batch}.{svtype}.{chrom}.bed
+svtk bedcluster ../00_preprocessing/std_beds/{batch}.{svtype}.bed.gz -r {chrom} -p {batch}_depth_{svtype}_{chrom} > bedcluster/{batch}.{svtype}.{chrom}.bed
 ```
 2. Aggregate observations into variants and convert to RdTest format
 ```
@@ -163,5 +163,5 @@ cat \
 ```
 3. Transform rdtest_beds to vcf
 ```
-svtools rdtest2vcf rdtest_beds/{batch}.depth.{chrom}.bed ref/batches.list vcfcluster/{batch}.depth.{chrom}.vcf.gz
+svtk rdtest2vcf rdtest_beds/{batch}.depth.{chrom}.bed ref/batches.list vcfcluster/{batch}.depth.{chrom}.vcf.gz
 ```

@@ -22,7 +22,7 @@ rule make_rdtest_beds:
         bed='denovo/rdtest_beds/{batch}.{chrom}.bed',
     shell:
         """
-        svtools vcf2bed {input.vcf} stdout \
+        svtk vcf2bed {input.vcf} stdout \
           | fgrep -w -f <(cut -f1 {input.petest}) - \
           | fgrep -e "DEL" -e "DUP" -e "#chrom" \
           | awk -v OFS="\\t" '{{print $1, $2, $3, $4, $6, $5}}' \

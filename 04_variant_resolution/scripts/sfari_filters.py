@@ -11,7 +11,7 @@ All the hard-coded, SFARI-specific filtering
 import argparse
 import sys
 import pysam
-import svtools.utils as svu
+import svtk.utils as svu
 
 
 # Samples with allosomal aneuploidies

@@ -27,7 +27,7 @@ rule bedcluster:
         **config['bedcluster']
     shell:
         """
-        svtools bedcluster {input.bed} -r {wildcards.chrom} \
+        svtk bedcluster {input.bed} -r {wildcards.chrom} \
           -p {params.prefix} \
           -f {params.frac} \
           {params.flags} \
@@ -67,5 +67,5 @@ rule make_depth_vcfs:
         samples=get_batch_samples
     shell:
         """
-        svtools rdtest2vcf {input.bed} {params.samples} {output.vcf}
+        svtk rdtest2vcf {input.bed} {params.samples} {output.vcf}
         """

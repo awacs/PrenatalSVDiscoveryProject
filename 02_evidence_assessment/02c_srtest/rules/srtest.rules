@@ -18,7 +18,7 @@ rule srtest_autosomes:
         chrom='(' + '|'.join(AUTOSOMES) + ')'
     shell:
          """
-         svtools sr-test {input.vcf} {config[sr_counts]} {output.metrics}
+         svtk sr-test {input.vcf} {config[sr_counts]} {output.metrics}
          """
 
 rule srtest_allosomes:
@@ -30,7 +30,7 @@ rule srtest_allosomes:
         whitelist='whitelists/{batch}.{sex}.list'
     shell:
          """
-         svtools sr-test --samples {params.whitelist} \
+         svtk sr-test --samples {params.whitelist} \
             {input.vcf} {config[sr_counts]} {output.metrics}
          """
 
