@@ -61,7 +61,8 @@ def scrape_record_stats(record, sample_keys):
     name = record.id
     svtype = record.info['SVTYPE']
 
-    svsize = record.stop - record.pos
+    #  svsize = record.stop - record.pos
+    svsize = record.info['SVLEN']
     sources = ','.join(record.info['SOURCES'])
 
     called = svu.get_called_samples(record)
@@ -73,6 +74,7 @@ def scrape_record_stats(record, sample_keys):
     n_children = len(children)
 
     homs = [s for s in called if record.samples[s]['GT'] == (1, 1)]
+    hom_parents = [s for s in homs if s in parents]
     hets = [s for s in called if record.samples[s]['GT'] == (0, 1)]
 
     n_homs = len(homs)
@@ -80,6 +82,12 @@ def scrape_record_stats(record, sample_keys):
 
     n_pilot = len([s for s in called if s in sample_keys['Pilot']])
     n_phase1 = len([s for s in called if s in sample_keys['Phase1']])
+
+    n_euro_called = len([s for s in called if s in sample_keys['European']])
+    n_euro_children = len([s for s in children if s in sample_keys['European']])
+    n_euro_parents = len([s for s in parents if s in sample_keys['European']])
+    n_euro_homs = len([s for s in homs if s in sample_keys['European']])
+    n_euro_hom_parents = len([s for s in hom_parents if s in sample_keys['European']])
 
     quads = sorted(set([s.split('.')[0] for s in called]))
     n_quads = len(quads)
@@ -97,7 +105,8 @@ def scrape_record_stats(record, sample_keys):
                 '{n_called}\t{n_quads}\t{n_parents}\t{n_children}\t'
                 '{n_homs}\t{n_hets}\t{n_pilot}\t{n_phase1}\t'
                 '{n_denovo}\t{n_maternal}\t{n_paternal}\t{n_biparental}\t'
-                '{called}')
+                '{n_euro_called}\t{n_euro_children}\t{n_euro_parents}\t'
+                '{n_euro_homs}\t{n_euro_hom_parents}')
 
     statline = statline.format(**locals())
     return statline
@@ -117,12 +126,15 @@ class StatsScraper:
 
         self.vcf = vcf
         self.sample_keys = sample_keys
-        self.samples = [s for slist in sample_keys.values() for s in slist]
-        self.batches = list(self.sample_keys.keys())
+
+        self.samples = sample_keys['Phase1'] + sample_keys['Pilot']
+        self.batches = ['Phase1', 'Pilot']
+
         self.batch_key = {}
         for batch, samples in self.sample_keys.items():
-            for sample in samples:
-                self.batch_key[sample] = batch
+            if batch in 'Phase1 Pilot'.split():
+                for sample in samples:
+                    self.batch_key[sample] = batch
 
         self.var_fout = var_fout
         self.obs_fout = obs_fout
@@ -130,9 +142,7 @@ class StatsScraper:
         self.var_fout.write(self.var_header)
         self.obs_fout.write(self.obs_header)
 
-        samples = [s for slist in sample_keys.values() for s in slist]
-        samples = sorted(set(samples))
-        self.sample_stats = {s: defaultdict(int) for s in samples}
+        self.sample_stats = {s: defaultdict(int) for s in self.samples}
 
     def scrape(self):
         for record in self.vcf:
@@ -185,7 +195,8 @@ class StatsScraper:
                   'n_called\tn_quads\tn_parents\tn_children\t'
                   'n_homs\tn_hets\tn_pilot\tn_phase1\t'
                   'n_denovo\tn_maternal\tn_paternal\tn_biparental\t'
-                  'called\n')
+                  'n_euro_called\tn_euro_children\tn_euro_parents\t'
+                  'n_euro_homs\tn_euro_hom_parents\n')
         return header
 
     @property
@@ -202,6 +213,7 @@ def main():
     parser.add_argument('vcf')
     parser.add_argument('phase1', type=argparse.FileType('r'))
     parser.add_argument('pilot', type=argparse.FileType('r'))
+    parser.add_argument('europeans', type=argparse.FileType('r'))
     parser.add_argument('var_fout', type=argparse.FileType('w'))
     parser.add_argument('obs_fout', type=argparse.FileType('w'))
     args = parser.parse_args()
@@ -211,6 +223,7 @@ def main():
     sample_keys = {}
     sample_keys['Pilot'] = [s.strip() for s in args.pilot.readlines()]
     sample_keys['Phase1'] = [s.strip() for s in args.phase1.readlines()]
+    sample_keys['European'] = [s.strip() for s in args.europeans.readlines()]
 
     scraper = StatsScraper(vcf, sample_keys, args.var_fout, args.obs_fout)
     scraper.scrape()

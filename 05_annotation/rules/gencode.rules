@@ -17,7 +17,7 @@ rule make_canonical_gtf:
     input:
         canon='gencode/gencode.canonical_transcripts.txt',
     output:
-        gtf='gencode/gencode.canonical_annotation.gtf.gz'
+        gtf='gencode/gencode.protein_coding.gtf.gz'
     shell:
         """
         cat \
@@ -27,4 +27,34 @@ rule make_canonical_gtf:
           | sed -e 's/^chr//' \
           | bgzip -c \
           > {output.gtf}
+        """
+
+rule make_promoters:
+    input:
+        gtf='gencode/gencode.protein_coding.gtf.gz'
+    output:
+        gtf='gencode/gencode.protein_coding.promoter.bed'
+    params:
+        window=1000
+    shell:
+        """
+        ./scripts/make_promoters.sh {input} {params.window} > {output}
+        """
+
+rule subset_gtf:
+    input:
+        genelist='genelists/geneSet_{subset}.genes.list'
+    output:
+        gtf='gencode/gencode.{subset}.gtf.gz',
+    wildcard_constraints:
+        subset='(antisense|lincRNA|processed_transcript|pseudogene)'
+    shell:
+        """
+        zcat {config[gencode][annotation_gtf]} \
+          | fgrep -w -f <(awk '{{print "gene_name \\""$1"\\";"}}' {input.genelist}) - \
+          | fgrep -e "gene_type \\"{wildcards.subset}\\"" - \
+          | sort -k1,1V -k4,4n \
+          | sed -e 's/^chr//' \
+          | bgzip -c \
+          > {output}
         """

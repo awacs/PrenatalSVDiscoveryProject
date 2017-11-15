@@ -15,9 +15,10 @@ import pysam
 import svtools.utils as svu
 
 
-def final_filter(vcf, bed):
+def final_filter(vcf, bed, chrom=None):
     bed = bed.set_index('name')
-    new_variant = (bed.operation == 'add-mosaic-variant')
+    new_variant = ((bed.operation == 'add-mosaic-variant') | 
+                   (bed.operation == 'add-variant'))
 
     filter_names = bed.loc[~new_variant].index.values
 
@@ -41,7 +42,7 @@ def final_filter(vcf, bed):
     for new_name in bed.loc[new_variant].index.values:
         # Stick to variants on same chromosome
         data = bed.loc[new_name]
-        if data.chrom != record.chrom:
+        if chrom is not None and data.chrom != chrom:
             continue
 
         new_record = record.copy()
@@ -50,26 +51,34 @@ def final_filter(vcf, bed):
 
         samples = data['samples'].split(',')
         for sample in samples:
-            record.samples[sample]['GT'] = (0, 1)
+            new_record.samples[sample]['GT'] = (0, 1)
         
-        record.id = new_name
-        record.chrom = data.chrom
-        record.pos = data.start
-        record.alts = ('<{0}>'.format(data.svtype), )
-        record.info['CHR2'] = data.chrom
-        record.stop = data.end
+        new_record.id = new_name
+        new_record.chrom = data.chrom
+        new_record.pos = data.start
+        new_record.alts = ('<{0}>'.format(data.svtype), )
+        new_record.info['CHR2'] = data.chrom
+        new_record.stop = data.end
 
-        record.info['SVTYPE'] = data.svtype
+        new_record.info['SVTYPE'] = data.svtype
         if data.svtype == 'DEL':
-            record.info['STRANDS'] = '+-'
+            new_record.info['STRANDS'] = '+-'
         else:
-            record.info['STRANDS'] = '-+'
-        record.info['SVLEN'] = int(data.end - data.start)
-        record.info['SOURCES'] = data.sources.split(',')
+            new_record.info['STRANDS'] = '-+'
+        new_record.info['SVLEN'] = int(data.end - data.start)
+        new_record.info['SOURCES'] = data.sources.split(',')
        
-        record.info['MEMBERS'] = (new_name, )
-        
-        yield record
+        new_record.info['MEMBERS'] = (new_name, )
+
+        op = bed.loc[new_name, 'operation']
+        if op == 'add-mosaic-variant':
+            if len(samples) == 1:
+                new_record.info['MOSAIC'] = samples
+            else:
+                parents = [s for s in samples if s.endswith('fa') or s.endswith('mo')]
+                new_record.info['MOSAIC'] = parents
+
+        yield new_record
 
 
 def main():
@@ -79,6 +88,7 @@ def main():
     parser.add_argument('vcf')
     parser.add_argument('filter_bed')
     parser.add_argument('fout')
+    parser.add_argument('--chrom')
     args = parser.parse_args()
 
     bed = pd.read_table(args.filter_bed) 
@@ -93,8 +103,10 @@ def main():
     else:
         fout = pysam.VariantFile(args.fout, 'w', header=header)
 
-    for record in final_filter(vcf, bed):
-        fout.write(record)
+    for record in final_filter(vcf, bed, args.chrom):
+        # Apply size filter
+        if record.info['SVLEN'] >= 50 or record.info['SVLEN'] == -1:
+            fout.write(record)
 
 
 if __name__ == '__main__':

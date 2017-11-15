@@ -37,11 +37,19 @@ def integrate_melt(cxsv, melt, fout, window=100):
 
     sect = cxsv_bed.window(melt_bed, w=window)
 
+    # Check breakpoints are within window
+    def close_enough(interval):
+        startA, endA = [int(x) for x in interval.fields[1:3]]
+        startB, endB = [int(x) for x in interval.fields[8:10]]
+        return abs(startA - startB) < window and abs(endA - endB) < window
+
     excluded_cxsv = deque()
     for interval in sect.intervals:
         samplesA = interval.fields[6].split(',')
         samplesB = interval.fields[13].split(',')
-        if samples_overlap(samplesA, samplesB):
+
+        if (samples_overlap(samplesA, samplesB) and 
+                close_enough(interval) and interval.fields[4] == 'INS'):
             excluded_cxsv.append(interval.fields[3])
 
     cxsv.reset()

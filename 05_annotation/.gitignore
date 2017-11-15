@@ -4,3 +4,12 @@ gencode/
 gencode_anno/
 old_scripts/
 annotated_vcfs/
+annotation_beds/
+annotations/
+cleaned/
+functional/
+genelists
+logs/
+ref
+tidy_annotations/
+formatted

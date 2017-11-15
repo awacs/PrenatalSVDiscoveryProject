@@ -40,7 +40,8 @@ rule restore_unresolved_cnv:
 rule overlap_melt:
     input:
         resolved='complex_resolution/resolved_plus_cnv/SSC.{chrom}.vcf.gz',
-        melt="melt/batch_merged/SSC.{chrom}.vcf.gz"
+        #melt="melt/batch_merged/SSC.{chrom}.vcf.gz"
+        melt="melt/reordered_columns/SSC.{chrom}.vcf.gz"
     output:
         vcf='complex_resolution/resolved_with_melt/SSC.{chrom}.vcf.gz',
     shell:

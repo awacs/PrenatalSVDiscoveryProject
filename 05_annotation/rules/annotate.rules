@@ -1,16 +1,97 @@
 
-rule annotate:
+
+import pandas as pd
+
+CHROMS = [str(x) for x in range(1, 23)] + 'X Y'.split()
+CODING_SUBSETS = ('protein_coding antisense lincRNA '
+                  'processed_transcript pseudogene').split()
+CODING_WILDCARDS = '(' + '|'.join(CODING_SUBSETS) + ')'
+NONCODING_WILDCARDS = '(functional|promoter)'
+SUBSET_WILDCARDS = '(' + '|'.join(CODING_SUBSETS) + '|functional|promoter)'
+
+with open('data/genelists.list') as glist:
+    GENELISTS = [g.strip() for g in glist.readlines()]
+
+rule annotate_coding:
     input:
         vcf=os.path.join(config['input_vcfs'], 'SSC.{chrom}.vcf.gz'),
-        gencode='gencode/gencode.canonical_annotation.gtf.gz',
-        noncoding='noncoding/noncoding_elements.bed'
+        gencode='gencode/gencode.{subset}.gtf.gz',
     output:
-        vcf='annotated_vcfs/SSC.{chrom}.vcf'
+        vcf='annotated_vcfs/SSC.{subset}.{chrom}.vcf'
+    wildcard_constraints:
+        subset=CODING_WILDCARDS
     shell:
         """
         svtools annotate \
           --gencode {input.gencode} \
-          --noncoding {input.noncoding} \
           {input.vcf} \
           {output.vcf}
         """
+
+rule annotate_promoters:
+    input:
+        vcf=os.path.join(config['input_vcfs'], 'SSC.{chrom}.vcf.gz'),
+        promoters='gencode/gencode.protein_coding.promoter.bed'
+    output:
+        vcf='annotated_vcfs/SSC.promoter.{chrom}.vcf'
+    shell:
+        """
+        svtools annotate \
+          --noncoding {input.promoters} \
+          {input.vcf} \
+          {output.vcf}
+        """
+
+rule annotate_functional:
+    input:
+        vcf=os.path.join(config['input_vcfs'], 'SSC.{chrom}.vcf.gz'),
+        functional='functional/functional_elements.bed'
+    output:
+        vcf='annotated_vcfs/SSC.functional.{chrom}.vcf'
+    shell:
+        """
+        svtools annotate \
+          --noncoding {input.functional} \
+          {input.vcf} \
+          {output.vcf}
+        """
+
+rule tabulate_coding_annotations:
+    input:
+        vcf='annotated_vcfs/SSC.{subset}.{chrom}.vcf'
+    output:
+        bed='annotation_beds/by_chrom/SSC.{subset}.{chrom}.bed'
+    wildcard_constraints:
+        subset=CODING_WILDCARDS
+    shell:
+        """
+        svtools vcf2bed {input.vcf} {output.bed} \
+          -i LOF -i COPY_GAIN -i INTRONIC -i DUP_PARTIAL -i INV_SPAN \
+          -i NEAREST_TSS -i INTRAGENIC \
+        """
+
+rule tabulate_noncoding_annotations:
+    input:
+        vcf='annotated_vcfs/SSC.{subset}.{chrom}.vcf'
+    output:
+        bed='annotation_beds/by_chrom/SSC.{subset}.{chrom}.bed'
+    wildcard_constraints:
+        subset=NONCODING_WILDCARDS
+    shell:
+        """
+        svtools vcf2bed {input.vcf} {output.bed} -i NONCODING 
+        """
+
+rule concatenate_beds:
+    input:
+        expand('annotation_beds/by_chrom/SSC.{{subset}}.{chrom}.bed', chrom=CHROMS)
+    output:
+        'annotation_beds/SSC.{subset}.bed'
+    wildcard_constraints:
+        subset=SUBSET_WILDCARDS
+    run:
+        dfs = []
+        for fname in input:
+            dfs.append(pd.read_table(fname))
+        df = pd.concat(dfs)
+        df.to_csv(output[0], sep='\t', index=False, na_rep='NA')

@@ -11,3 +11,5 @@ rd_dn_check:
     queue: normal
 pesr_dn_check:
     queue: normal
+resolve_cpx:
+    queue: normal

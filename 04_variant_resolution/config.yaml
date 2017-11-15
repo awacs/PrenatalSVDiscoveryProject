@@ -8,6 +8,7 @@ batches: ../ref/batch.key
 samples:
     Phase1: /data/talkowski/Samples/SFARI/deep_sv/asc_540/sv-pipeline/ref/samples.Phase1.list
     Pilot: /data/talkowski/Samples/SFARI/deep_sv/asc_540/sv-pipeline/ref/samples.Pilot.list
+    European: /data/talkowski/Samples/SFARI/deep_sv/asc_540/sv-pipeline/ref/samples.european.list
 
 # Subsets to analyze
 chroms: ref/chroms.all.list
@@ -53,12 +54,12 @@ pe_counts: '../02_evidence_assessment/02b_petest/pe_counts/cohort.txt.gz'
 sr_counts: '../../pesr_testing/split_counts/cohort.txt.gz'
 
 cutoffs:
-    Phase1: data/Phase1.cutoffs.txt
-    Pilot: data/Pilot.cutoffs.txt
+    Phase1: /data/talkowski/Samples/SFARI/deep_sv/asc_540/sv-pipeline/04_variant_resolution/data/Phase1.cutoffs.txt
+    Pilot: /data/talkowski/Samples/SFARI/deep_sv/asc_540/sv-pipeline/04_variant_resolution/data/Pilot.cutoffs.txt
 
 melt_beds:
-    Phase1: data/melt.Phase1.pass.bed
-    Pilot: data/melt.Pilot.pass.bed
+    Phase1: /data/talkowski/Samples/SFARI/deep_sv/asc_540/sv-pipeline/04_variant_resolution/data/melt.Phase1.pass.bed
+    Pilot: /data/talkowski/Samples/SFARI/deep_sv/asc_540/sv-pipeline/04_variant_resolution/data/melt.Pilot.pass.bed
 melt_dn_filter: data/melt.dn_filter.txt
 
 cytobands: ref/cytobands.bed.gz

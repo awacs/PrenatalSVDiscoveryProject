@@ -14,12 +14,13 @@ from collections import defaultdict
 import pysam
 
 
-def rename(vcf, fout):
+def rename(vcf, fout, chrom=None):
     indexes = defaultdict(int)
     fmt = 'SSC_{svtype}_{chrom}_{idx}'
 
     for record in vcf:
-        chrom = record.chrom
+        if chrom is None:
+            chrom = record.chrom
         svtype = record.info['SVTYPE']
         indexes[svtype] += 1
         idx = indexes[svtype]
@@ -50,6 +51,7 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('vcf')
     parser.add_argument('fout')
+    parser.add_argument('--chrom')
     args = parser.parse_args()
 
     if args.vcf in '- stdin'.split():
@@ -62,7 +64,7 @@ def main():
     else:
         fout = pysam.VariantFile(args.fout, 'w', header=vcf.header)
 
-    rename(vcf, fout)
+    rename(vcf, fout, args.chrom)
 
 
 if __name__ == '__main__':

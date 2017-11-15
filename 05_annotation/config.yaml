@@ -3,3 +3,5 @@ gencode:
     pc_transcripts_fa: /data/talkowski/Samples/SFARI/ASC_analysis/annotations/gencode_v19/gencode.v19.pc_transcripts.fa.gz
     pc_translations_fa: /data/talkowski/Samples/SFARI/ASC_analysis/annotations/gencode_v19/gencode.v19.pc_translations.fa.gz
     transcript_source: /data/talkowski/Samples/SFARI/ASC_analysis/annotations/gencode_v19/gencode.v19.metadata.Transcript_source
+input_vcfs: /data/talkowski/Samples/SFARI/deep_sv/asc_540/sv-pipeline/04_variant_resolution/ssc_20170911/final_variants
+chroms: 'ref/chroms.all.list'

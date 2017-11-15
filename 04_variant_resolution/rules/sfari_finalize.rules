@@ -24,20 +24,58 @@ rule filter_blacklist:
           > {output}
         """
 
-rule finalize_variants:
+rule make_blacklist_filtered_bed:
     input:
         'complex_resolution/blacklist_filtered/SSC.{chrom}.vcf.gz'
     output:
-        'final_variants/SSC.{chrom}.vcf.gz'
+        'complex_resolution/blacklist_filtered/SSC.{chrom}.bed'
     shell:
         """
-        {config[scripts]}/final_filter.py {input} {config[final_filter]} - \
-          | vcf-sort -c \
-          | {config[scripts]}/rename.py - - \
-          | bgzip -c \
-          > {output};
-        tabix -p vcf {output}
+        svtools vcf2bed {input} {output}
         """
+
+rule self_intersect:
+    input:
+        'complex_resolution/blacklist_filtered/SSC.{chrom}.bed'
+    output:
+        'complex_resolution/eliminate_redundancies/SSC.redundancies.{chrom}.txt'
+    shell:
+        """
+        bedtools intersect -a {input} -b {input} -wa -wb -r -f 0.9 \
+          | awk '($5==$11 && $4!=$10)' \
+          | cut -f 4,10 \
+          > {output}
+        """
+   
+rule eliminate_redundancies:
+    input:
+        vcf='complex_resolution/blacklist_filtered/SSC.{chrom}.vcf.gz',
+        links='complex_resolution/eliminate_redundancies/SSC.redundancies.{chrom}.txt'
+    output:
+        'complex_resolution/eliminate_redundancies/SSC.{chrom}.vcf.gz'
+    shell:
+        """
+        {config[scripts]}/eliminate_redundancies.py {input.vcf} {input.links} stdout \
+          | vcf-sort -c \
+          | bgzip -c \
+          > {output}
+        """
+
+# rule finalize_variants:
+#     input:
+#         'complex_resolution/eliminate_redundancies/SSC.{chrom}.vcf.gz'
+#     output:
+#         'final_variants/SSC.{chrom}.vcf.gz'
+#     shell:
+#         """
+#         {config[scripts]}/final_filter.py --chrom {wildcards.chrom} \
+#             {input} {config[final_filter]} - \
+#           | vcf-sort -c \
+#           | {config[scripts]}/rename.py --chrom {wildcards.chrom} - - \
+#           | bgzip -c \
+#           > {output};
+#         tabix --force -p vcf {output}
+#         """
 
 rule merge_variants:
     input:
@@ -68,7 +106,7 @@ rule scrape_stats:
     shell:
         """
         {config[scripts]}/scrape_stats.py {input.vcf} \
-            {config[samples][Phase1]} {config[samples][Pilot]} \
+            {config[samples][Phase1]} {config[samples][Pilot]} {config[samples][European]} \
             {output.var} {output.obs}
         """
 

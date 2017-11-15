@@ -1,6 +1,6 @@
 
 KEY = {}
-with open('noncoding.key') as keyfile:
+with open('functional.key') as keyfile:
     for line in keyfile:
         bed, name = line.strip().split()
         KEY[name] = bed
@@ -10,7 +10,7 @@ def map_input(wildcards):
 
 
 # TODO: process and concatenate noncoding element beds provided in config
-rule clean_noncoding_bed:
+rule clean_functional_bed:
     input:
         map_input
     output:
@@ -25,11 +25,11 @@ rule clean_noncoding_bed:
         """
 
     
-rule make_noncoding_bed:
+rule make_functional_bed:
     input:
         expand('cleaned/{name}.bed', name=KEY.keys())
     output:
-        'noncoding/noncoding_elements.bed'
+        'functional/functional_elements.bed'
     shell:
         """
         sort -k1,1V -k2,2n -m {input} > {output}

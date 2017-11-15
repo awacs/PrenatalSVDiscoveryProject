@@ -1,0 +1,168 @@
+
+rule tidy_gencode:
+    input:
+        'annotation_beds/SSC.{subset}.bed'
+    output:
+        'tidy_annotations/SSC.{subset}.txt'
+    wildcard_constraints:
+        subset='(antisense|lincRNA|processed_transcript|pseudogene)'
+    shell:
+        """
+        ./scripts/tidy_gencode.py {input} {wildcards.subset} {output}
+        """
+
+rule tidy_functional:
+    input:
+        'annotation_beds/SSC.{subset}.bed'
+    output:
+        'tidy_annotations/SSC.{subset}.txt'
+    wildcard_constraints:
+        subset='(functional)'
+    shell:
+        """
+        ./scripts/tidy_functional.py {input} {output}
+        """
+
+rule tidy_promoter:
+    input:
+        'annotation_beds/SSC.{subset}.bed'
+    output:
+        'tidy_annotations/SSC.{subset}.txt'
+    wildcard_constraints:
+        subset='(promoter)'
+    shell:
+        """
+        ./scripts/tidy_promoter.py {input} {output}
+        """
+
+rule tidy_protein_coding:
+    input:
+        'annotation_beds/SSC.{subset}.bed'
+    output:
+        'tidy_annotations/SSC.{subset}.txt'
+    wildcard_constraints:
+        subset='(protein_coding)'
+    shell:
+        """
+        ./scripts/tidy_protein_coding.py {input} {output}
+        """
+
+rule merge_promoters:
+    input:
+        protein_coding='tidy_annotations/SSC.protein_coding.txt',
+        promoter='tidy_annotations/SSC.promoter.txt',
+    output:
+        'tidy_annotations/SSC.genic.txt'
+    shell:
+        """
+        ./scripts/merge_promoters.py {input.protein_coding} {input.promoter} {output}
+        """
+
+rule make_genelist_annotations:
+    input:
+        coding='tidy_annotations/SSC.genic.txt',
+    output:
+        'annotations/SSC.genelists.txt'
+    shell:
+        """
+        ./scripts/add_genelists.sh {input.coding} {output}
+        """
+
+rule make_noncoding_annotations:
+    input:
+        genic='tidy_annotations/SSC.genic.txt',
+        antisense='tidy_annotations/SSC.antisense.txt',
+        lincRNA='tidy_annotations/SSC.lincRNA.txt',
+        processed='tidy_annotations/SSC.processed_transcript.txt',
+        pseudogene='tidy_annotations/SSC.pseudogene.txt',
+    output:
+        'tidy_annotations/SSC.noncoding.txt'
+    shell:
+        """
+        cat {input.antisense} {input.processed} {input.pseudogene} {input.lincRNA} \
+          | fgrep -w -f <(fgrep -e "INTERGENIC" {input.genic} | cut -f1) - \
+          | cut -f -2 \
+          | sort -k1,1 -u \
+          | awk -v OFS="\\t" '{{print $0, "NA"}}' \
+          | cat <(head -n1 {input.antisense}) - \
+          > {output}
+        """
+
+rule make_combinations:
+    input:
+        genic='tidy_annotations/SSC.genic.txt',
+        genelists='annotations/SSC.genelists.txt',
+        noncoding='tidy_annotations/SSC.noncoding.txt',
+        functional='tidy_annotations/SSC.functional.txt'
+    output:
+        'annotations/SSC.combinations.txt'
+    shell:
+        """
+        ./scripts/make_combinations.py {input.genic} {input.genelists} \
+          {input.noncoding} {input.functional} {output}
+        """
+        
+rule merge_genic_noncoding:
+    input:
+        genic='tidy_annotations/SSC.genic.txt',
+        noncoding='tidy_annotations/SSC.noncoding.txt'
+    output:
+        'annotations/SSC.genic.txt'
+    shell:
+        """
+        cat <(cut -f1 {input.noncoding} | fgrep -v -w -f - {input.genic}) {input.noncoding} > {output}
+        """
+
+rule rename_functional:
+    input:
+        'tidy_annotations/SSC.functional.txt'
+    output:
+        'annotations/SSC.functional.txt'
+    shell:
+        """
+        sed -e 's/NONCODING/functional_element/' {input} > {output}
+        """
+
+rule add_noncoding:
+    input:
+        genic='annotations/SSC.genic.txt',
+        genelists='annotations/SSC.genelists.txt',
+    output:
+        genelists='annotations/SSC.genelists_with_intergenic.txt',
+    shell:
+        """
+        fgrep -e INTERGENIC -e antisense -e lincRNA -e processed_transcript -e pseudogene {input.genic} \
+          | awk -v OFS="\\t" '{{print $1, $2, "Any"}}' \
+          | cat {input.genelists} - \
+          > {output.genelists}
+        """
+
+
+rule make_combinations2:
+    input:
+        genelists='annotations/SSC.genelists_with_intergenic.txt',
+        functional='annotations/SSC.functional.txt'
+    output:
+        'annotations/SSC.combinations2.txt'
+    run:
+        import pandas as pd
+        genelists = pd.read_table(input.genelists)
+        functional = pd.read_table(input.functional)
+
+        any_genic = genelists.copy()
+        any_genic['effect'] = 'Any'
+        any_genic['genelist'] = 'Any'
+        any_genic = any_genic.drop_duplicates()
+        genelists = pd.concat([genelists, any_genic]).drop_duplicates()
+
+        any_functional = genelists['name effect'.split()]
+        any_functional = any_functional.rename(columns=dict(effect='functional_element'))
+        any_functional['functional_element'] = 'Any'
+        any_functional = any_functional.drop_duplicates()
+        functional = pd.concat([functional, any_functional]).drop_duplicates()
+
+        combos = pd.merge(genelists, functional, on='name', how='outer')
+        combos['combo'] = (combos.effect + '_' +
+                           combos.genelist + '_' +
+                           combos.functional_element)
+        combos.to_csv(output[0], index=False, sep='\t')

@@ -51,3 +51,14 @@ rule merge_melt_batches:
           | vcf-sort -c \
           | bgzip -c > {output.vcf}
         """
+
+rule reorder_melt_columns:
+    input:
+        vcf="melt/batch_merged/SSC.{chrom}.vcf.gz",
+        template='complex_resolution/resolved_plus_cnv/SSC.{chrom}.vcf.gz'
+    output:
+        vcf="melt/reordered_columns/SSC.{chrom}.vcf.gz"
+    shell:
+        """
+        vcf-shuffle-cols -t {input.template} {input.vcf} | bgzip -c > {output}
+        """

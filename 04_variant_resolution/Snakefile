@@ -50,6 +50,12 @@ wildcard_constraints:
 
 rule all:
     input:
+        # expand('complex_resolution/resolved_and_merged/SSC.{chrom}.vcf.gz',
+               # chrom=CHROMS),
+        # expand('batch_integration/depth/link_merged/SSC.{chrom}.vcf.gz', chrom=CHROMS),
+        # expand('complex_resolution/resolved_with_melt/SSC.{chrom}.vcf.gz', chrom=CHROMS),
+#        expand('complex_resolution/blacklist_filtered/SSC.{chrom}.bed', chrom=CHROMS),
+#        expand('complex_resolution/find_redundancies/SSC.redundant.{chrom}.bed', chrom=CHROMS),
         'final_variants/SSC.vcf.gz',
         'final_variants/SSC.bed',
         'callset_stats/SSC.v3.variant_stats.csv',
