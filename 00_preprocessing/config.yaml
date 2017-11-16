@@ -1,18 +1,15 @@
-batches: ref/batch.key
-
-groups: ref/quads.519.list
-idmap: ref/519families_idmapping
+batch_key: ref/batch.key
+groups: ref/families.list
 
 pesr_sources:
-    # - delly
+    - delly
+    - manta
     # - lumpy
-    # - manta
     # - wham
-    - melt
+    # - melt
 depth_sources:
     - cnmops
     - cnvnator
-    - genomestrip
 
 svtypes:
     - DEL
@@ -25,8 +22,8 @@ cnv_types:
     - DUP
 
 # sources to remove outliers from 
-outlier_removal:
-    - delly
-    - lumpy
-    - manta
-    - wham 
+outlier_removal: []
+    # - delly
+    # - manta
+    # - lumpy
+    # - wham 
