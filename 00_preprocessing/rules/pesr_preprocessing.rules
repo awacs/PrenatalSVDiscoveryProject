@@ -15,7 +15,11 @@ rule standardize_vcf:
         prefix=lambda wildcards: '{source}_{group}'.format(**wildcards)
     shell:
         """
-        svtk standardize --prefix {params.prefix} {input} {output} {wildcards.source}
+        svtk standardize \
+          --prefix {params.prefix} \
+          --contigs {config[contigs]} \
+          --min-size {config[min_svsize]} \
+          {input} {output} {wildcards.source}
         """
 
 rule identify_vcf_outliers:

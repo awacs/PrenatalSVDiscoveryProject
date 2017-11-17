@@ -1,11 +1,13 @@
 batch_key: ref/batch.key
 groups: ref/families.list
+contigs: /data/talkowski/tools/ref/human_g1k_v37/human_g1k_v37.fasta.fai
+min_svsize: 50
 
 pesr_sources:
     - delly
     - manta
-    # - lumpy
-    # - wham
+    - lumpy
+    - wham
     # - melt
 depth_sources:
     - cnmops

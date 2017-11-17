@@ -12,7 +12,7 @@ include: 'rules/preprocessing_qc.rules'
 
 import pandas as pd
 
-BATCH_KEY = pd.read_table(config['batches'], dtype=str)
+BATCH_KEY = pd.read_table(config['batch_key'], dtype=str)
 BATCHES = sorted(BATCH_KEY.batch.unique())
 
 with open(config['groups']) as glist:
@@ -28,8 +28,5 @@ rule all:
     input:
         expand('filtered_vcfs/{source}.{group}.vcf.gz',
                source=PESR_SOURCES, group=GROUPS),
-        #'qc/aggregate/raw_counts.txt',
-        #'qc/aggregate/filtered_counts.txt',
-        #expand('std_beds/{batch}.{svtype}.bed.gz',
-        #       batch=BATCHES, svtype=CNV)
-
+        expand('std_beds/{batch}.{svtype}.bed.gz',
+               batch=BATCHES, svtype=CNV)
