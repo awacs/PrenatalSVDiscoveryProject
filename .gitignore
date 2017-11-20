@@ -41,3 +41,7 @@ algorithm_integration/depth/*
 algorithm_integration/pesr/*
 
 QC/
+
+*data/
+*data
+ref.bak/

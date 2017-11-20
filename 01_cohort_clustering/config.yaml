@@ -1,18 +1,15 @@
 # Key
 batch_key: ref/batch.key
 
-# List of batches to integrate
-batches: ref/batches.list
-
 # Input directories
 input_vcfs: ../00_preprocessing/filtered_vcfs/
 input_beds: ../00_preprocessing/std_beds/
 
 # List of groups to integrate
-groups: ref/quads.519.list
+groups: ref/families.list
 
 # List of chromosomes to integrate
-chroms: ref/chroms.allosomes.list
+contigs: ref/contigs.fai
 
 # Lists of algorithms to integrate
 pesr_sources:

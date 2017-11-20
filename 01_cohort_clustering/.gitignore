@@ -11,3 +11,4 @@ bedcluster/*
 rdtest_beds/*
 *.bed
 logs/*
+sample_lists/*

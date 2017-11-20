@@ -51,21 +51,22 @@ rule make_depth_rdtest_beds:
           > {output}
         """
 
-def get_batch_samples(wildcards):
-    key = pd.read_table(config['batch_key'])
-    print(key.head())
-    samples = key.loc[key['batch'] == wildcards.batch, 'sample'].values
-    return samples
+rule make_sample_list:
+    output:
+        samples='sample_lists/{batch}.samples.list'
+    run:
+        key = pd.read_table(config['batch_key'])
+        samples = key.loc[key['batch'] == wildcards.batch, 'sample']
+        samples.to_csv(output.samples, header=False, index=False)
 
 rule make_depth_vcfs:
     input:
-        bed='rdtest_beds/{batch}.depth.{chrom}.bed'
+        bed='rdtest_beds/{batch}.depth.{chrom}.bed',
+        samples='sample_lists/{batch}.samples.list'
     output:
         vcf='vcfcluster/{batch}.depth.{chrom}.vcf.gz',
         tbi='vcfcluster/{batch}.depth.{chrom}.vcf.gz.tbi',
-    params:
-        samples=get_batch_samples
     shell:
         """
-        svtk rdtest2vcf {input.bed} {params.samples} {output.vcf}
+        svtk rdtest2vcf --contigs {config[contigs]} {input.bed} {input.samples} {output.vcf}
         """
