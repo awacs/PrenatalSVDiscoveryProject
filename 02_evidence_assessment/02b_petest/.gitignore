@@ -4,6 +4,7 @@ pe_counts/
 whitelists
 petest_no_tlocs/
 petest_allosomes/
+sex_lists/
 
 # Ignore cluster logs
 logs/*

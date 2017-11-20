@@ -21,16 +21,28 @@ rule petest_autosomes:
          svtk pe-test {input.vcf} {config[pe_counts]} {output.metrics}
          """
 
+rule make_sex_list:
+    output:
+        'sex_lists/{batch}.{sex}.list'
+    params:
+        sex=lambda wildcards: 1 if wildcards.sex == 'male' else 2
+    shell:
+        """
+        awk -v OFS="\\t" '($3=="{wildcards.batch}") {{print $1}}' {config[batch_key]} \
+          | fgrep -w -f - {config[famfile]} \
+          | awk -v OFS="\\t" '($5=="{params.sex}") {{print $2}}' \
+          > {output}
+        """
+
 rule petest_allosomes:
     input:
-        vcf=input_vcf
+        vcf=input_vcf,
+        whitelist='sex_lists/{batch}.{sex}.list'
     output:
         metrics='petest_allosomes/{batch}.{source}.{chrom}.{sex}.stats',
-    params:
-        whitelist='whitelists/{batch}.{sex}.list'
     shell:
          """
-         svtk pe-test --samples {params.whitelist} \
+         svtk pe-test --samples {input.whitelist} \
             {input.vcf} {config[pe_counts]} {output.metrics}
          """
 
