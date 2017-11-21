@@ -71,20 +71,6 @@ rule RdTest_autosomes:
            -w {params.whitelist}
          """
 
-# rule merge_rdtest_autosomes:
-    # input:
-        # dynamic('split_rdtest_autosomes/{batch}.{source}.{chrom}.{split}.metrics')
-    # output:
-        # 'rdtest/{batch}.{source}.{chrom}.metrics'
-    # shell:
-        # """
-        # cat {input} \
-          # | sed -r -e '/^chr\\s/d' \
-          # | sort -k1,1V -k2,2n \
-          # | cat <(head -n1 {input[0]}) - \
-          # > {output}
-        # """
-
 rule make_sex_list:
     output:
         'sex_lists/{batch}.{sex}.list'
@@ -150,8 +136,6 @@ rule merge_splits:
         dynamic('rdtest_splits/{batch}.{source}.{chrom}.{split}.metrics')
     output:
         'rdtest/{batch}.{source}.{chrom}.metrics'
-    # wildcard_constraints:
-        # chrom='(' + '|'.join(ALLOSOMES) + ')'
     run:
         dfs = []
         for fname in input:
