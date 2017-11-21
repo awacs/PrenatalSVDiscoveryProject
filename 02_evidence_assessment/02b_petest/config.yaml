@@ -9,6 +9,7 @@ pe_counts: /data/talkowski/hw878/Prenatal/Collect_pesr/cromwell-executions/Colle
 
 # Subsets to analyze
 contigs: ../../ref/contigs.fai
+variants_per_split: 1000
 
 pesr_sources:
     # - melt

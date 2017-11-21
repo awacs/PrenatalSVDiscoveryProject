@@ -18,21 +18,18 @@ def get_num_splits(wildcards):
         for i, l in enumerate(bedfile):
             pass
     lines = i + 1
-    n_splits = np.ceil(lines / config['rdtest_split_size'])
+    n_splits = np.ceil(lines / config['variants_per_split'])
     return n_splits
 
 def get_suffix_len(wildcards):
     return max(int(np.ceil(np.log10(get_num_splits(wildcards)))), 1)
 
-
-def rdtest_splits(wildcards):
+def bed_splits(wildcards):
     n_splits = get_num_splits(wildcards)
     suffix_len = get_suffix_len(n_splits)
     splits = ['%d'.format(i).zfill(suffix_len) for i in range(n_splits)]
 
     fpath = 'split_rdtest/{batch}.{source}.{chrom}.{{split}}.metrics'
-    import ipdb
-    ipdb.set_trace()
     fpath = fpath.format(**wildcards)
     return expand(fpath, split=splits)
     
@@ -44,22 +41,22 @@ rule split_beds:
         splits=dynamic('split_beds/{batch}.{source}.{chrom}.{split}')
     params:
         prefix='split_beds/{batch}.{source}.{chrom}.',
-        lines=config['rdtest_split_size'],
+        lines=config['variants_per_split'],
         suffix_len=get_suffix_len
     shell:
         """
         sed '/^#/d' {input.bed} \
+          | sort -R \
           | split -a {params.suffix_len} -d -l {params.lines} - {params.prefix}
         """
 
-# TODO: generate blacklist from batch key
 rule RdTest_autosomes:
     input:
         bed='split_beds/{batch}.{source}.{chrom}.{split}',
     output:
-        metrics='split_rdtest/{batch}.{source}.{chrom}.{split}.metrics',
+        metrics='rdtest_splits/{batch}.{source}.{chrom}.{split}.metrics',
     params:
-        whitelist='whitelists/{batch}.list'
+        whitelist='sex_lists/{batch}.list'
     wildcard_constraints:
         chrom='(' + '|'.join(AUTOSOMES) + ')'
     shell:
@@ -74,34 +71,32 @@ rule RdTest_autosomes:
            -w {params.whitelist}
          """
 
-rule merge_rdtest_autosomes:
-    input:
-        rdtest_splits
-#dynamic('split_rdtest_autosomes/{batch}.{source}.{chrom}.{split}.metrics')
-    output:
-        'rdtest/{batch}.{source}.{chrom}.metrics'
-    shell:
-        """
-        cat {input} \
-          | sed -r -e '/^chr\\s/d' \
-          | sort -k1,1V -k2,2n \
-          | cat <(head -n1 {input[0]}) - \
-          > {output}
-        """
-
-# rule make_sex_whitelists:
+# rule merge_rdtest_autosomes:
     # input:
-        # whitelist='whitelists/{batch}.list'
+        # dynamic('split_rdtest_autosomes/{batch}.{source}.{chrom}.{split}.metrics')
     # output:
-        # whitelist='sexlists/{batch}.{sex}.list'
-    # params:
-        # sex=lambda wildcards: 1 if wildcards.sex == 'males' else 2
+        # 'rdtest/{batch}.{source}.{chrom}.metrics'
     # shell:
         # """
-        # awk '($5=={params.sex}) {{print $2}}' {config[famfile]} \
-          # | fgrep -w -f - {input.whitelist} \
-          # > {output.whitelist};
+        # cat {input} \
+          # | sed -r -e '/^chr\\s/d' \
+          # | sort -k1,1V -k2,2n \
+          # | cat <(head -n1 {input[0]}) - \
+          # > {output}
         # """
+
+rule make_sex_list:
+    output:
+        'sex_lists/{batch}.{sex}.list'
+    params:
+        sex=lambda wildcards: 1 if wildcards.sex == 'male' else 2
+    shell:
+        """
+        awk -v OFS="\\t" '($3=="{wildcards.batch}") {{print $1}}' {config[batch_key]} \
+          | fgrep -w -f - {config[famfile]} \
+          | awk -v OFS="\\t" '($5=="{params.sex}") {{print $2}}' \
+          > {output}
+        """
 
 rule RdTest_allosomes:
     input:
@@ -111,7 +106,7 @@ rule RdTest_allosomes:
     wildcard_constraints:
         chrom='(' + '|'.join(ALLOSOMES) + ')'
     params:
-        whitelist='whitelists/{batch}.{sex}.list'
+        whitelist='sex_lists/{batch}.{sex}.list'
     shell:
          """
          Rscript {config[rdtest]} \
@@ -130,7 +125,7 @@ rule merge_rdtest_Y:
     wildcard_constraints:
         chrom='Y'
     output:
-        metrics='split_rdtest/{batch}.{source}.{chrom}.{split}.metrics'
+        metrics='rdtest_splits/{batch}.{source}.{chrom}.{split}.metrics'
     shell:
         """cp {input.males} {output.metrics}"""
 
@@ -141,7 +136,7 @@ rule merge_rdtest_X:
     wildcard_constraints:
         chrom='X'
     output:
-        'split_rdtest/{batch}.{source}.{chrom}.{split}.metrics'
+        'rdtest_splits/{batch}.{source}.{chrom}.{split}.metrics'
     run:
         males = pd.read_table(input.males)
         females = pd.read_table(input.females)
@@ -150,14 +145,13 @@ rule merge_rdtest_X:
         females.to_csv(output[0], sep='\t', index=False)
 
 
-rule merge_rdtest_allosomes:
+rule merge_splits:
     input:
-        rdtest_splits
-#dynamic('split_rdtest/{batch}.{source}.{chrom}.{split}.metrics')
+        dynamic('rdtest_splits/{batch}.{source}.{chrom}.{split}.metrics')
     output:
         'rdtest/{batch}.{source}.{chrom}.metrics'
-    wildcard_constraints:
-        chrom='(' + '|'.join(ALLOSOMES) + ')'
+    # wildcard_constraints:
+        # chrom='(' + '|'.join(ALLOSOMES) + ')'
     run:
         dfs = []
         for fname in input:

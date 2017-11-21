@@ -5,3 +5,4 @@ logs/*
 srtest_*
 whitelists
 sex_lists/
+vcf_splits/

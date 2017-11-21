@@ -5,6 +5,8 @@ whitelists
 petest_no_tlocs/
 petest_allosomes/
 sex_lists/
+petest*
+vcf_splits/
 
 # Ignore cluster logs
 logs/*

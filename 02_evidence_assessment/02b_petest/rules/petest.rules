@@ -1,4 +1,7 @@
 
+import numpy as np
+import pysam
+
 AUTOSOMES = [str(x) for x in range(1, 23)]
 ALLOSOMES = 'X Y'.split()
 
@@ -8,12 +11,68 @@ def input_vcf(wildcards):
                        source=wildcards.source, chrom=wildcards.chrom)
     return path
 
-# TODO: generate blacklist from batch key
-rule petest_autosomes:
+def get_num_splits(wildcards):
+    vcf = pysam.VariantFile(input_vcf(wildcards))
+    for i, record in enumerate(vcf):
+        continue
+    n_records = i + 1
+    n_splits = int(np.ceil(n_records / config['variants_per_split']))
+    return n_splits
+
+def get_suffix_len(wildcards):
+    n_splits = get_num_splits(wildcards)
+    return max(int(np.ceil(np.log10(n_splits))), 1)
+
+def vcf_splits(wildcards):
+    prefix = 'vcf_splits/{batch}.{source}.{chrom}.'.format(**wildcards)
+
+    suffix_len = get_suffix_len(wildcards)
+    suffix = '%%0%dd' % suffix_len
+    path = prefix + suffix
+
+    n_splits = get_num_splits(wildcards)
+    vcfs = [path % int(i) for i in range(n_splits)]
+    return vcfs
+
+rule split_vcf:
     input:
         vcf=input_vcf
     output:
-        metrics='petest/{batch}.{source}.{chrom}.stats',
+        # touch('split_logs/{batch}.{source}.{chrom}.done'),
+        # vcf_splits
+        dynamic('vcf_splits/{batch}.{source}.{chrom}.{split}')
+    params:
+        prefix='vcf_splits/{batch}.{source}.{chrom}.',
+        lines=config['variants_per_split'],
+        suffix_len=get_suffix_len
+    shell:
+        """
+        zcat {input.vcf} \
+          | sed '/^#/d' \
+          | sort -R \
+          | split -a {params.suffix_len} -d -l {params.lines} - {params.prefix}
+        """
+
+rule reheader_splits:
+    input:
+        header=input_vcf,
+        split='vcf_splits/{batch}.{source}.{chrom}.{split}'
+    output:
+        'vcf_splits/{batch}.{source}.{chrom}.{split}.vcf.gz'
+    shell:
+        """
+        cat \
+            <( zcat {input.header} | sed -n -e '/^#/p' ) \
+            {input.split} \
+          | bgzip -c \
+          > {output}
+        """
+    
+rule petest_autosomes:
+    input:
+        vcf='vcf_splits/{batch}.{source}.{chrom}.{split}.vcf.gz'
+    output:
+        metrics='petest_splits/{batch}.{source}.{chrom}.{split}.stats',
     wildcard_constraints:
         chrom='(' + '|'.join(AUTOSOMES) + ')'
     shell:
@@ -36,10 +95,10 @@ rule make_sex_list:
 
 rule petest_allosomes:
     input:
-        vcf=input_vcf,
+        vcf='vcf_splits/{batch}.{source}.{chrom}.{split}.vcf.gz',
         whitelist='sex_lists/{batch}.{sex}.list'
     output:
-        metrics='petest_allosomes/{batch}.{source}.{chrom}.{sex}.stats',
+        metrics='petest_allosomes_splits/{batch}.{source}.{chrom}.{sex}.{split}.stats',
     shell:
          """
          svtk pe-test --samples {input.whitelist} \
@@ -48,10 +107,10 @@ rule petest_allosomes:
 
 rule merge_allosomes:
     input:
-        males='petest_allosomes/{batch}.{source}.{chrom}.males.stats',
-        females='petest_allosomes/{batch}.{source}.{chrom}.females.stats',
+        males='petest_allosomes_splits/{batch}.{source}.{chrom}.males.{split}.stats',
+        females='petest_allosomes_splits/{batch}.{source}.{chrom}.females.{split}.stats',
     output:
-        metrics='petest/{batch}.{source}.{chrom}.stats',
+        metrics='petest_splits/{batch}.{source}.{chrom}.{split}.stats',
     wildcard_constraints:
         chrom='(' + '|'.join(ALLOSOMES) + ')'
     run:
@@ -63,3 +122,16 @@ rule merge_allosomes:
             male_only = females.log_pval.isnull()
             females.loc[male_only] = males
             females.to_csv(output.metrics, sep='\t', index=False, na_rep='NA')
+
+rule merge_splits:
+    input:
+        dynamic('petest_splits/{batch}.{source}.{chrom}.{split}.stats')
+    output:
+        'petest/{batch}.{source}.{chrom}.stats'
+    run:
+        dfs = []
+        for fname in input:
+            dfs.append(pd.read_table(fname))
+        df = pd.concat(dfs)
+        df.to_csv(output[0], index=False, sep='\t')
+        

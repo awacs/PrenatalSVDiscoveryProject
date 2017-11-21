@@ -1,12 +1,11 @@
 # Key
-batches: ../../ref/batch.key
+batch_key: ../../ref/batch.key
 
-input_beds: ../../01_algorithm_integration/rdtest_beds
-input_vcfs: ../../01_algorithm_integration/vcfcluster
+input_beds: ../../01_cohort_clustering/rdtest_beds
+input_vcfs: ../../01_cohort_clustering/vcfcluster
 
 # Subsets to analyze
-groups: ../../ref/quads.519.list
-chroms: ../../ref/chroms.allosomes.list
+contigs: ../../ref/contigs.fai
 pesr_sources:
     - delly
     - lumpy
@@ -15,7 +14,7 @@ pesr_sources:
 
 # RdTest parameters
 rdtest: /PHShome/my520/code/RdTest/RdTest.R
-coveragefile: /data/talkowski/Samples/SFARI/deep_sv/asc_540/bincov/matrices/ASC540.all.binCov.raw.bed.gz
-medianfile: /data/talkowski/Samples/SFARI/deep_sv/asc_540/bincov/matrices/ASC540.all.binCov.median
-famfile: /data/talkowski/Samples/SFARI/lists/SFARI_Real.fam
-rdtest_split_size: 100
+coveragefile: /data/talkowski/xuefang/data/Prenatal/prenatal/metrics/bincov/Prenatal.bincov.gz
+medianfile: /data/talkowski/xuefang/data/Prenatal/prenatal/metrics/bincov/Prenatal.bincov.median
+famfile: /data/talkowski/hw878/Prenatal/prenatal.fam
+variants_per_split: 100

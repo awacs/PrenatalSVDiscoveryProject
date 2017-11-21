@@ -5,10 +5,12 @@ famfile: /data/talkowski/hw878/Prenatal/prenatal.fam
 input_beds: ../../01_cohort_clustering/rdtest_beds
 input_vcfs: ../../01_cohort_clustering/vcfcluster
 
-sr_counts: '../../../pesr_testing/split_counts/cohort.txt.gz'
+sr_counts: /data/talkowski/hw878/Prenatal/Collect_pesr/cromwell-executions/Collectpesr_trio/94b2a10d-7e2a-4400-8864-a0bc8a470757/call-mergeSR/execution/matrics.SR.sorted.txt.gz
 
 # Subsets to analyze
 contigs: ../../ref/contigs.fai
+variants_per_split: 100
+
 pesr_sources:
     - delly
     - lumpy
