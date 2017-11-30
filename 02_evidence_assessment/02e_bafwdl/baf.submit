@@ -1,1 +1,0 @@
-bsub -q big -sla miket_sc < baf.lsf

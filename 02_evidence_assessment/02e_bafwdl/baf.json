@@ -1,7 +1,0 @@
-{
-  "Wrap.BAFscript": "/data/talkowski/hw878/Prenatal/Sv-pipe/PrenatalSVDiscoveryProject/02_evidence_assessment/02d_baftest/scripts/baf.py",
-  "Wrap.DIR": "/data/talkowski/hw878/Prenatal/Sv-pipe/PrenatalSVDiscoveryProject/01_cohort_clustering/rdtest_beds",
-  "Wrap.OUTDIR": "/data/talkowski/hw878/testing/Split/baftest/",
-  "Wrap.Baffile": "/data/talkowski/hw878/Prenatal/BAF/baf_snp_sorted.txt.gz",
-  "Wrap.Batch_key": "/data/talkowski/hw878/Prenatal/Sv-pipe/PrenatalSVDiscoveryProject/ref/prenatal.batch.key"
-}
