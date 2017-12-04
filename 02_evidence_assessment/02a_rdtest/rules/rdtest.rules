@@ -2,8 +2,11 @@
 import numpy as np
 import pandas as pd
 
-AUTOSOMES = [str(x) for x in range(1, 23)]
-ALLOSOMES = 'X Y'.split()
+with open(config['autosomes']) as autofile:
+    AUTOSOMES = [line.strip().split()[0] for line in autofile]
+
+with open(config['allosomes']) as allofile:
+    ALLOSOMES = [line.strip().split()[0] for line in allofile]
 
 def input_bed(wildcards):
     path='{input_beds}/{batch}.{source}.{chrom}.bed'
@@ -29,7 +32,7 @@ def bed_splits(wildcards):
     suffix_len = get_suffix_len(n_splits)
     splits = ['%d'.format(i).zfill(suffix_len) for i in range(n_splits)]
 
-    fpath = 'split_rdtest/{batch}.{source}.{chrom}.{{split}}.metrics'
+    fpath = 'rdtest_splits/{batch}.{source}.{chrom}.{{split}}.metrics'
     fpath = fpath.format(**wildcards)
     return expand(fpath, split=splits)
     
@@ -50,25 +53,32 @@ rule split_beds:
           | split -a {params.suffix_len} -d -l {params.lines} - {params.prefix}
         """
 
+rule make_whitelist:
+    output:
+        'whitelists/{batch}.list'
+    shell:
+        """
+        awk -v OFS="\\t" '($3=="{wildcards.batch}") {{print $1}}' {config[batch_key]} > {output}
+        """
+        
 rule RdTest_autosomes:
     input:
         bed='split_beds/{batch}.{source}.{chrom}.{split}',
+        whitelist='whitelists/{batch}.list'
     output:
         metrics='rdtest_splits/{batch}.{source}.{chrom}.{split}.metrics',
-    params:
-        whitelist='sex_lists/{batch}.list'
     wildcard_constraints:
         chrom='(' + '|'.join(AUTOSOMES) + ')'
     shell:
          """
          Rscript {config[rdtest]} \
            -b {input.bed} \
-           -o split_rdtest/ \
+           -o rdtest_splits/ \
            -n {wildcards.batch}.{wildcards.source}.{wildcards.chrom}.{wildcards.split} \
            -c {config[coveragefile]} \
            -m {config[medianfile]} \
            -f {config[famfile]} \
-           -w {params.whitelist}
+           -w {input.whitelist}
          """
 
 rule make_sex_list:
@@ -87,12 +97,11 @@ rule make_sex_list:
 rule RdTest_allosomes:
     input:
         bed='split_beds/{batch}.{source}.{chrom}.{split}',
+        sex_list='sex_lists/{batch}.{sex}.list'
     output:
         metrics='sex_split_rdtest/{batch}.{source}.{chrom}.{split}.{sex}.metrics',
     wildcard_constraints:
         chrom='(' + '|'.join(ALLOSOMES) + ')'
-    params:
-        whitelist='sex_lists/{batch}.{sex}.list'
     shell:
          """
          Rscript {config[rdtest]} \
@@ -102,7 +111,7 @@ rule RdTest_allosomes:
            -c {config[coveragefile]} \
            -m {config[medianfile]} \
            -f {config[famfile]} \
-           -w {params.whitelist}
+           -w {input.sex_list}
          """
 
 rule merge_rdtest_Y:
